@@ -52,7 +52,7 @@ export default function CustomersPage() {
     setFormData({
       name: customer.name,
       email: customer.email || '',
-      phone: customer.phone,
+      phone: customer.phone || '',
       address: customer.address || '',
       city: customer.city || '',
       state: customer.state || '',
@@ -202,11 +202,10 @@ export default function CustomersPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Telefone *
+                    Telefone
                   </label>
                   <input
                     type="tel"
-                    required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="(11) 98765-4321"
