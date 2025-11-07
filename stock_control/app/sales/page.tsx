@@ -84,17 +84,6 @@ export default function SalesPage() {
     const customer = customers.find(c => c.id === selectedCustomer);
     if (!customer) return;
 
-    // Verificar estoque antes de finalizar (exceto se for cancelado)
-    if (saleStatus !== 'cancelled') {
-      for (const item of saleItems) {
-        const product = productStorage.getById(item.productId);
-        if (!product || product.quantity < item.quantity) {
-          alert(`Estoque insuficiente para ${item.productName}`);
-          return;
-        }
-      }
-    }
-
     const newSale: Omit<Sale, 'id'> = {
       customerId: customer.id,
       customerName: customer.name,
@@ -105,12 +94,20 @@ export default function SalesPage() {
       notes: notes
     };
 
-    saleStorage.add(newSale);
-    
-    resetForm();
-    loadData();
-    setShowModal(false);
-    alert('Venda realizada com sucesso!');
+    try {
+      saleStorage.add(newSale);
+      
+      resetForm();
+      loadData();
+      setShowModal(false);
+      alert('Venda realizada com sucesso!');
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao criar venda: ${error.message}`);
+      } else {
+        alert('Erro desconhecido ao criar venda');
+      }
+    }
   };
 
   const resetForm = () => {
@@ -123,9 +120,19 @@ export default function SalesPage() {
   };
 
   const handleUpdateStatus = (saleId: string, newStatus: Sale['status']) => {
-    saleStorage.update(saleId, { status: newStatus });
-    loadData();
-    setEditingStatus(null);
+    try {
+      saleStorage.update(saleId, { status: newStatus });
+      loadData();
+      setEditingStatus(null);
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao atualizar status: ${error.message}`);
+      } else {
+        alert('Erro desconhecido ao atualizar status');
+      }
+      setEditingStatus(null);
+      loadData(); // Recarregar para reverter a mudança visual
+    }
   };
 
   const getStatusBadge = (status: Sale['status']) => {
@@ -237,6 +244,7 @@ export default function SalesPage() {
           <p><strong>Data:</strong> ${new Date(sale.saleDate).toLocaleString('pt-BR')}</p>
           <p><strong>Cliente:</strong> ${sale.customerName}</p>
           <p><strong>Status:</strong> <span class="status status-${sale.status}">${statusLabels[sale.status]}</span></p>
+          ${sale.fromOrder ? '<p style="color: #1d4ed8; font-weight: 600; margin-top: 8px;">📦 Origem: Encomenda (não afeta estoque)</p>' : ''}
         </div>
         </div>
 
@@ -405,9 +413,19 @@ export default function SalesPage() {
               {sales.map((sale) => (
                 <tr key={sale.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">
-                      {new Date(sale.saleDate).toLocaleDateString('pt-BR')}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm text-gray-900">
+                        {new Date(sale.saleDate).toLocaleDateString('pt-BR')}
+                      </span>
+                      {sale.fromOrder && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-full w-fit">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                          </svg>
+                          Encomenda
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-medium text-gray-900">{sale.customerName}</span>
@@ -629,7 +647,17 @@ export default function SalesPage() {
       {viewingSale && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Detalhes da Venda</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Detalhes da Venda</h2>
+              {viewingSale.fromOrder && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-blue-700 bg-blue-50 rounded-lg">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                  Origem: Encomenda
+                </span>
+              )}
+            </div>
             
             <div className="space-y-4 mb-6">
               <div>

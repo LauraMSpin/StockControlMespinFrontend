@@ -41,6 +41,7 @@ export interface Sale {
   saleDate: Date;
   status: 'pending' | 'awaiting_payment' | 'paid' | 'cancelled';
   notes?: string;
+  fromOrder?: boolean; // Indica se veio de uma encomenda
 }
 
 export interface Order {

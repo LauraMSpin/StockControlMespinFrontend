@@ -31,12 +31,26 @@ export default function ProductsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    const quantity = parseInt(formData.quantity);
+    const price = parseFloat(formData.price);
+    
+    // Validar valores
+    if (quantity < 0) {
+      alert('A quantidade não pode ser negativa!');
+      return;
+    }
+    
+    if (price < 0) {
+      alert('O preço não pode ser negativo!');
+      return;
+    }
+    
     if (editingProduct) {
       productStorage.update(editingProduct.id, {
         name: formData.name,
         description: formData.description,
-        price: parseFloat(formData.price),
-        quantity: parseInt(formData.quantity),
+        price: price,
+        quantity: quantity,
         category: formData.category,
         fragrance: formData.fragrance,
         weight: formData.weight,
@@ -45,8 +59,8 @@ export default function ProductsPage() {
       productStorage.add({
         name: formData.name,
         description: formData.description,
-        price: parseFloat(formData.price),
-        quantity: parseInt(formData.quantity),
+        price: price,
+        quantity: quantity,
         category: formData.category,
         fragrance: formData.fragrance,
         weight: formData.weight,
@@ -274,6 +288,7 @@ export default function ProductsPage() {
                   <input
                     type="number"
                     step="0.01"
+                    min="0"
                     required
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
@@ -287,6 +302,7 @@ export default function ProductsPage() {
                   </label>
                   <input
                     type="number"
+                    min="0"
                     required
                     value={formData.quantity}
                     onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}

@@ -63,11 +63,19 @@ export default function OrdersPage() {
         notes: formData.notes,
       };
       
-      orderStorage.update(editingOrder.id, updates);
-      
-      // Se mudou para delivered, mostrar mensagem
-      if (editingOrder.status !== 'delivered' && formData.status === 'delivered') {
-        alert('Encomenda entregue! Uma venda foi criada automaticamente no histórico de vendas.');
+      try {
+        orderStorage.update(editingOrder.id, updates);
+        
+        // Se mudou para delivered, mostrar mensagem
+        if (editingOrder.status !== 'delivered' && formData.status === 'delivered') {
+          alert('Encomenda entregue! Uma venda foi criada automaticamente no histórico de vendas.');
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          alert(`Erro ao atualizar encomenda: ${error.message}`);
+          loadData(); // Recarregar para reverter mudanças
+          return;
+        }
       }
     } else {
       orderStorage.add({

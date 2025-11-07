@@ -118,6 +118,20 @@ export const saleStorage = {
   
   add: (sale: Omit<Sale, 'id'>) => {
     const sales = saleStorage.getAll();
+    
+    // Validar estoque antes de criar a venda (exceto se for cancelada OU se vier de encomenda)
+    if (sale.status !== 'cancelled' && !sale.fromOrder) {
+      for (const item of sale.items) {
+        const product = productStorage.getById(item.productId);
+        if (!product) {
+          throw new Error(`Produto ${item.productName} não encontrado`);
+        }
+        if (product.quantity < item.quantity) {
+          throw new Error(`Estoque insuficiente para ${item.productName}. Disponível: ${product.quantity}, Solicitado: ${item.quantity}`);
+        }
+      }
+    }
+    
     const newSale: Sale = {
       ...sale,
       id: generateId(),
@@ -126,8 +140,8 @@ export const saleStorage = {
     sales.push(newSale);
     saleStorage.save(sales);
     
-    // Atualizar estoque apenas se a venda não for cancelada
-    if (sale.status !== 'cancelled') {
+    // Atualizar estoque apenas se a venda não for cancelada E não vier de encomenda
+    if (sale.status !== 'cancelled' && !sale.fromOrder) {
       sale.items.forEach(item => {
         const product = productStorage.getById(item.productId);
         if (product) {
@@ -148,28 +162,43 @@ export const saleStorage = {
       const oldSale = sales[index];
       const newSale = { ...oldSale, ...updates };
       
-      // Se o status mudou de cancelado para outro, devolver ao estoque
-      if (oldSale.status !== 'cancelled' && updates.status === 'cancelled') {
-        oldSale.items.forEach(item => {
-          const product = productStorage.getById(item.productId);
-          if (product) {
-            productStorage.update(item.productId, {
-              quantity: product.quantity + item.quantity
-            });
+      // Apenas manipular estoque se a venda NÃO vier de encomenda
+      if (!oldSale.fromOrder) {
+        // Se o status mudou de não-cancelado para cancelado, devolver ao estoque
+        if (oldSale.status !== 'cancelled' && updates.status === 'cancelled') {
+          oldSale.items.forEach(item => {
+            const product = productStorage.getById(item.productId);
+            if (product) {
+              productStorage.update(item.productId, {
+                quantity: product.quantity + item.quantity
+              });
+            }
+          });
+        }
+        
+        // Se o status mudou de cancelado para outro, validar e remover do estoque
+        if (oldSale.status === 'cancelled' && updates.status && updates.status !== 'cancelled') {
+          // Validar estoque antes de remover
+          for (const item of oldSale.items) {
+            const product = productStorage.getById(item.productId);
+            if (!product) {
+              throw new Error(`Produto ${item.productName} não encontrado`);
+            }
+            if (product.quantity < item.quantity) {
+              throw new Error(`Estoque insuficiente para ${item.productName}. Disponível: ${product.quantity}, Necessário: ${item.quantity}`);
+            }
           }
-        });
-      }
-      
-      // Se o status mudou de cancelado para outro, remover do estoque
-      if (oldSale.status === 'cancelled' && updates.status && updates.status !== 'cancelled') {
-        oldSale.items.forEach(item => {
-          const product = productStorage.getById(item.productId);
-          if (product) {
-            productStorage.update(item.productId, {
-              quantity: product.quantity - item.quantity
-            });
-          }
-        });
+          
+          // Remover do estoque
+          oldSale.items.forEach(item => {
+            const product = productStorage.getById(item.productId);
+            if (product) {
+              productStorage.update(item.productId, {
+                quantity: product.quantity - item.quantity
+              });
+            }
+          });
+        }
       }
       
       sales[index] = newSale;
@@ -216,9 +245,9 @@ export const orderStorage = {
       const oldOrder = orders[index];
       const newOrder = { ...oldOrder, ...updates };
       
-      // Se o status mudou para "delivered", converter em venda
+      // Se o status mudou para "delivered", converter em venda (SEM descontar estoque)
       if (oldOrder.status !== 'delivered' && updates.status === 'delivered') {
-        // Criar venda automaticamente com status "paid"
+        // Criar venda automaticamente com status "paid" e flag fromOrder
         saleStorage.add({
           customerId: newOrder.customerId,
           customerName: newOrder.customerName,
@@ -232,6 +261,7 @@ export const orderStorage = {
           totalAmount: newOrder.totalAmount,
           saleDate: new Date(),
           status: 'paid',
+          fromOrder: true, // Flag para não descontar do estoque
           notes: `Encomenda #${newOrder.id} - ${newOrder.notes || ''}`
         });
       }
