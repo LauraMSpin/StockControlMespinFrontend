@@ -19,6 +19,7 @@ export default function SalesPage() {
   const [discountPercentage, setDiscountPercentage] = useState('0');
   const [saleStatus, setSaleStatus] = useState<'pending' | 'awaiting_payment' | 'paid' | 'cancelled'>('pending');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pix' | 'debit' | 'credit' | ''>('');
+  const [saleDate, setSaleDate] = useState<string>('');
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [editingStatus, setEditingStatus] = useState<{ saleId: string; currentStatus: Sale['status'] } | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -137,7 +138,7 @@ export default function SalesPage() {
       discountPercentage: discount,
       discountAmount: discountAmount,
       totalAmount: total,
-      saleDate: new Date(),
+      saleDate: saleDate ? new Date(saleDate) : new Date(),
       status: saleStatus,
       paymentMethod: saleStatus === 'paid' ? paymentMethod as 'cash' | 'pix' | 'debit' | 'credit' : undefined,
       notes: notes
@@ -168,6 +169,7 @@ export default function SalesPage() {
     setDiscountPercentage('0');
     setSaleStatus('pending');
     setPaymentMethod('');
+    setSaleDate('');
     setEditingSale(null);
   };
 
@@ -185,6 +187,16 @@ export default function SalesPage() {
     setDiscountPercentage(sale.discountPercentage.toString());
     setSaleStatus(sale.status);
     setPaymentMethod(sale.paymentMethod || '');
+    
+    // Formatar data para o input type="datetime-local"
+    const date = new Date(sale.saleDate);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    setSaleDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+    
     setViewingSale(null);
     setShowModal(true);
   };
@@ -225,6 +237,7 @@ export default function SalesPage() {
       discountPercentage: discount,
       discountAmount: discountAmount,
       totalAmount: total,
+      saleDate: saleDate ? new Date(saleDate) : editingSale.saleDate,
       status: saleStatus,
       paymentMethod: saleStatus === 'paid' ? paymentMethod as 'cash' | 'pix' | 'debit' | 'credit' : undefined,
       notes: notes
@@ -867,6 +880,25 @@ export default function SalesPage() {
                 )}
               </div>
             )}
+
+            {/* Data da Venda */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Data e Hora da Venda
+              </label>
+              <input
+                type="datetime-local"
+                value={saleDate}
+                onChange={(e) => setSaleDate(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#22452B] focus:border-transparent"
+              />
+              <p className="mt-1 text-xs text-[#814923]">
+                {saleDate 
+                  ? `Data selecionada: ${new Date(saleDate).toLocaleString('pt-BR')}`
+                  : 'Se não selecionar, será usada a data/hora atual'
+                }
+              </p>
+            </div>
 
             {/* Observações */}
             <div className="mb-6">

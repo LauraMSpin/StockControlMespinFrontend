@@ -11,6 +11,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const [editingQuantity, setEditingQuantity] = useState<{ productId: string; value: string } | null>(null);
   const [formData, setFormData] = useState({
@@ -85,6 +86,7 @@ export default function ProductsPage() {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
+    setIsDuplicating(false);
     setFormData({
       name: product.name,
       description: product.description,
@@ -102,6 +104,22 @@ export default function ProductsPage() {
       productStorage.delete(id);
       loadProducts();
     }
+  };
+
+  const handleDuplicate = (product: Product) => {
+    // Preencher o formulário com os dados do produto existente
+    setEditingProduct(null); // Não está editando, está criando novo
+    setIsDuplicating(true);
+    setFormData({
+      name: `${product.name} (Cópia)`,
+      description: product.description,
+      price: product.price.toString(),
+      quantity: '0', // Quantidade zerada para o novo produto
+      category: product.category || '',
+      fragrance: product.fragrance || '',
+      weight: product.weight || '',
+    });
+    setShowModal(true);
   };
 
   const handleQuantityClick = (product: Product) => {
@@ -168,6 +186,7 @@ export default function ProductsPage() {
       weight: '',
     });
     setEditingProduct(null);
+    setIsDuplicating(false);
   };
 
   return (
@@ -315,14 +334,32 @@ export default function ProductsPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => handleEdit(product)}
-                      className="text-[#5D663D] hover:text-[#22452B] mr-4"
+                      className="text-[#5D663D] hover:text-[#22452B] mr-3 inline-flex items-center gap-1"
+                      title="Editar produto"
                     >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
                       Editar
                     </button>
                     <button
-                      onClick={() => handleDelete(product.id)}
-                      className="text-[#AF6138] hover:text-[#814923]"
+                      onClick={() => handleDuplicate(product)}
+                      className="text-[#B49959] hover:text-[#814923] mr-3 inline-flex items-center gap-1"
+                      title="Criar cópia deste produto"
                     >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Duplicar
+                    </button>
+                    <button
+                      onClick={() => handleDelete(product.id)}
+                      className="text-[#AF6138] hover:text-[#814923] inline-flex items-center gap-1"
+                      title="Excluir produto"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                       Excluir
                     </button>
                   </td>
@@ -337,9 +374,19 @@ export default function ProductsPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              {editingProduct ? 'Editar Produto' : 'Novo Produto'}
-            </h2>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-[#2C1810]">
+                {editingProduct ? 'Editar Produto' : isDuplicating ? 'Duplicar Produto' : 'Novo Produto'}
+              </h2>
+              {isDuplicating && (
+                <p className="text-sm text-[#814923] mt-2 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Criando cópia do produto. Ajuste o nome e a quantidade conforme necessário.
+                </p>
+              )}
+            </div>
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="md:col-span-2">
