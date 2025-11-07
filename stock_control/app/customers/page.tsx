@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Customer } from '@/types';
-import { customerStorage } from '@/lib/storage';
+import { customerStorage, saleStorage, orderStorage } from '@/lib/storage';
 
 export default function CustomersPage() {
   const searchParams = useSearchParams();
@@ -61,6 +61,34 @@ export default function CustomersPage() {
   };
 
   const handleDelete = (id: string) => {
+    // Verificar se o cliente tem vendas ativas (não canceladas)
+    const sales = saleStorage.getAll();
+    const activeSales = sales.filter(sale => 
+      sale.customerId === id && sale.status !== 'cancelled'
+    );
+
+    // Verificar se o cliente tem encomendas ativas (não canceladas)
+    const orders = orderStorage.getAll();
+    const activeOrders = orders.filter(order => 
+      order.customerId === id && order.status !== 'cancelled'
+    );
+
+    if (activeSales.length > 0 || activeOrders.length > 0) {
+      let message = 'Este cliente não pode ser excluído porque possui:\n\n';
+      
+      if (activeSales.length > 0) {
+        message += `• ${activeSales.length} venda(s) ativa(s)\n`;
+      }
+      
+      if (activeOrders.length > 0) {
+        message += `• ${activeOrders.length} encomenda(s) ativa(s)\n`;
+      }
+      
+      message += '\nCancele ou conclua os pedidos antes de excluir o cliente.';
+      alert(message);
+      return;
+    }
+
     if (confirm('Tem certeza que deseja excluir este cliente?')) {
       customerStorage.delete(id);
       loadCustomers();
