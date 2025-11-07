@@ -40,6 +40,7 @@ export interface Sale {
   totalAmount: number;
   saleDate: Date;
   status: 'pending' | 'awaiting_payment' | 'paid' | 'cancelled';
+  paymentMethod?: 'cash' | 'pix' | 'debit' | 'credit';
   notes?: string;
   fromOrder?: boolean; // Indica se veio de uma encomenda
 }

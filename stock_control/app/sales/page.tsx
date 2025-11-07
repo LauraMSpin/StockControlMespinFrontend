@@ -17,8 +17,11 @@ export default function SalesPage() {
   const [quantity, setQuantity] = useState('1');
   const [notes, setNotes] = useState('');
   const [saleStatus, setSaleStatus] = useState<'pending' | 'awaiting_payment' | 'paid' | 'cancelled'>('pending');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pix' | 'debit' | 'credit' | ''>('');
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [editingStatus, setEditingStatus] = useState<{ saleId: string; currentStatus: Sale['status'] } | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ saleId: string; newStatus: Sale['status'] } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -88,6 +91,12 @@ export default function SalesPage() {
       return;
     }
 
+    // Validar método de pagamento se o status for "paid"
+    if (saleStatus === 'paid' && !paymentMethod) {
+      alert('Selecione o método de pagamento para vendas pagas!');
+      return;
+    }
+
     const customer = customers.find(c => c.id === selectedCustomer);
     if (!customer) return;
 
@@ -98,6 +107,7 @@ export default function SalesPage() {
       totalAmount: calculateTotal(),
       saleDate: new Date(),
       status: saleStatus,
+      paymentMethod: saleStatus === 'paid' ? paymentMethod as 'cash' | 'pix' | 'debit' | 'credit' : undefined,
       notes: notes
     };
 
@@ -124,9 +134,19 @@ export default function SalesPage() {
     setQuantity('1');
     setNotes('');
     setSaleStatus('pending');
+    setPaymentMethod('');
   };
 
   const handleUpdateStatus = (saleId: string, newStatus: Sale['status']) => {
+    // Se está mudando para "paid", pedir método de pagamento
+    if (newStatus === 'paid') {
+      setPendingStatusChange({ saleId, newStatus });
+      setShowPaymentModal(true);
+      setEditingStatus(null);
+      return;
+    }
+
+    // Para outros status, atualizar diretamente
     try {
       saleStorage.update(saleId, { status: newStatus });
       loadData();
@@ -138,7 +158,32 @@ export default function SalesPage() {
         alert('Erro desconhecido ao atualizar status');
       }
       setEditingStatus(null);
-      loadData(); // Recarregar para reverter a mudança visual
+      loadData();
+    }
+  };
+
+  const confirmPaymentMethod = () => {
+    if (!paymentMethod || !pendingStatusChange) {
+      alert('Selecione um método de pagamento!');
+      return;
+    }
+
+    try {
+      saleStorage.update(pendingStatusChange.saleId, { 
+        status: pendingStatusChange.newStatus,
+        paymentMethod: paymentMethod as 'cash' | 'pix' | 'debit' | 'credit'
+      });
+      loadData();
+      setShowPaymentModal(false);
+      setPendingStatusChange(null);
+      setPaymentMethod('');
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao atualizar status: ${error.message}`);
+      } else {
+        alert('Erro desconhecido ao atualizar status');
+      }
+      loadData();
     }
   };
 
@@ -251,6 +296,12 @@ export default function SalesPage() {
           <p><strong>Data:</strong> ${new Date(sale.saleDate).toLocaleString('pt-BR')}</p>
           <p><strong>Cliente:</strong> ${sale.customerName}</p>
           <p><strong>Status:</strong> <span class="status status-${sale.status}">${statusLabels[sale.status]}</span></p>
+          ${sale.paymentMethod && sale.status === 'paid' ? `<p><strong>Pagamento:</strong> ${
+            sale.paymentMethod === 'cash' ? '💵 Dinheiro' :
+            sale.paymentMethod === 'pix' ? '📱 PIX' :
+            sale.paymentMethod === 'debit' ? '💳 Cartão de Débito' :
+            sale.paymentMethod === 'credit' ? '💳 Cartão de Crédito' : ''
+          }</p>` : ''}
           ${sale.fromOrder ? '<p style="color: #1d4ed8; font-weight: 600; margin-top: 8px;">📦 Origem: Encomenda (não afeta estoque)</p>' : ''}
         </div>
         </div>
@@ -411,6 +462,9 @@ export default function SalesPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Pagamento
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ações
                 </th>
@@ -438,7 +492,9 @@ export default function SalesPage() {
                     <span className="text-sm font-medium text-gray-900">{sale.customerName}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{sale.items.length} produto(s)</span>
+                    <span className="text-sm text-gray-900">
+                      {sale.items.reduce((sum, item) => sum + item.quantity, 0)} un.
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-semibold text-green-600">
@@ -468,6 +524,18 @@ export default function SalesPage() {
                       >
                         {getStatusBadge(sale.status)}
                       </button>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {sale.paymentMethod ? (
+                      <span className="text-sm text-gray-900">
+                        {sale.paymentMethod === 'cash' && '💵 Dinheiro'}
+                        {sale.paymentMethod === 'pix' && '📱 PIX'}
+                        {sale.paymentMethod === 'debit' && '💳 Débito'}
+                        {sale.paymentMethod === 'credit' && '💳 Crédito'}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -632,6 +700,26 @@ export default function SalesPage() {
               )}
             </div>
 
+            {/* Método de Pagamento */}
+            {saleStatus === 'paid' && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Método de Pagamento *
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'pix' | 'debit' | 'credit' | '')}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="">Selecione o método</option>
+                  <option value="cash">💵 Dinheiro</option>
+                  <option value="pix">📱 PIX</option>
+                  <option value="debit">💳 Débito</option>
+                  <option value="credit">💳 Crédito</option>
+                </select>
+              </div>
+            )}
+
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => {
@@ -682,6 +770,17 @@ export default function SalesPage() {
                 <span className="text-sm font-medium text-gray-500">Status:</span>
                 <div className="mt-1">{getStatusBadge(viewingSale.status)}</div>
               </div>
+              {viewingSale.paymentMethod && viewingSale.status === 'paid' && (
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Método de Pagamento:</span>
+                  <p className="text-gray-900 mt-1">
+                    {viewingSale.paymentMethod === 'cash' && '💵 Dinheiro'}
+                    {viewingSale.paymentMethod === 'pix' && '📱 PIX'}
+                    {viewingSale.paymentMethod === 'debit' && '💳 Cartão de Débito'}
+                    {viewingSale.paymentMethod === 'credit' && '💳 Cartão de Crédito'}
+                  </p>
+                </div>
+              )}
             </div>
 
             <table className="min-w-full divide-y divide-gray-200 border mb-4">
@@ -730,6 +829,52 @@ export default function SalesPage() {
                 className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
               >
                 Imprimir Nota
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Método de Pagamento */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Selecionar Método de Pagamento</h2>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Como foi realizado o pagamento? *
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'pix' | 'debit' | 'credit' | '')}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                autoFocus
+              >
+                <option value="">Selecione o método</option>
+                <option value="cash">💵 Dinheiro</option>
+                <option value="pix">📱 PIX</option>
+                <option value="debit">💳 Cartão de Débito</option>
+                <option value="credit">💳 Cartão de Crédito</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setPendingStatusChange(null);
+                  setPaymentMethod('');
+                }}
+                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmPaymentMethod}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Confirmar Pagamento
               </button>
             </div>
           </div>
