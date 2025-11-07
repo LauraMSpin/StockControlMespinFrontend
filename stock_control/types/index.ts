@@ -1,5 +1,37 @@
 // Tipos para o sistema de controle de estoque
 
+// Catálogo de materiais reutilizáveis
+export interface Material {
+  id: string;
+  name: string;
+  unit: string; // g, ml, unidade, etc
+  totalQuantityPurchased: number; // Quantidade total comprada
+  totalCostPaid: number; // Custo total pago
+  costPerUnit: number; // Custo por unidade (calculado)
+  category?: string; // cera, essência, embalagem, etc
+  supplier?: string; // Fornecedor
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Material usado em um produto específico
+export interface ProductionMaterial {
+  id: string;
+  materialId: string; // Referência ao material do catálogo
+  materialName: string;
+  quantity: number; // Quantidade usada neste produto
+  unit: string; // g, ml, unidade, etc
+  costPerUnit: number; // Custo por unidade
+  totalCost: number; // quantity * costPerUnit
+}
+
+export interface PriceHistory {
+  price: number;
+  date: Date;
+  reason?: string; // Ex: "Atualização de categoria", "Ajuste manual"
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -9,6 +41,10 @@ export interface Product {
   category?: string;
   fragrance?: string;
   weight?: string;
+  productionMaterials?: ProductionMaterial[]; // Materiais usados na produção
+  productionCost?: number; // Custo total de produção calculado
+  profitMargin?: number; // Margem de lucro (price - productionCost)
+  priceHistory?: PriceHistory[]; // Histórico de alterações de preço
   createdAt: Date;
   updatedAt: Date;
 }
@@ -69,4 +105,35 @@ export interface Settings {
   companyPhone?: string;
   companyEmail?: string;
   companyAddress?: string;
+}
+
+export interface CategoryPrice {
+  id: string;
+  categoryName: string;
+  price: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  category: 'production' | 'investment' | 'fixed_cost' | 'variable_cost' | 'other';
+  amount: number;
+  date: Date;
+  isRecurring: boolean; // Se é despesa recorrente mensal
+  notes?: string;
+}
+
+export interface InstallmentPayment {
+  id: string;
+  description: string;
+  totalAmount: number;
+  installments: number;
+  currentInstallment: number;
+  installmentAmount: number;
+  startDate: Date;
+  category: 'production' | 'investment' | 'equipment' | 'other';
+  notes?: string;
+  paid: boolean[]; // Array indicando quais parcelas foram pagas
 }

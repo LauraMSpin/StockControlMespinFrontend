@@ -1,5 +1,5 @@
 // Sistema de armazenamento local usando localStorage
-import { Product, Customer, Sale, Order, Settings } from '@/types';
+import { Product, Customer, Sale, Order, Settings, Expense, InstallmentPayment, Material, CategoryPrice } from '@/types';
 
 // Função auxiliar para gerar IDs únicos
 export const generateId = () => {
@@ -36,7 +36,20 @@ export const productStorage = {
     const products = productStorage.getAll();
     const index = products.findIndex(p => p.id === id);
     if (index !== -1) {
-      products[index] = { ...products[index], ...updates, updatedAt: new Date() };
+      const currentProduct = products[index];
+      
+      // Se o preço está sendo atualizado, adicionar ao histórico
+      if (updates.price !== undefined && updates.price !== currentProduct.price) {
+        const priceHistory = currentProduct.priceHistory || [];
+        priceHistory.push({
+          price: updates.price,
+          date: new Date(),
+          reason: (updates as any).priceChangeReason || 'Ajuste manual',
+        });
+        updates.priceHistory = priceHistory;
+      }
+      
+      products[index] = { ...currentProduct, ...updates, updatedAt: new Date() };
       productStorage.save(products);
       return products[index];
     }
@@ -349,5 +362,208 @@ export const settingsStorage = {
   reset: () => {
     settingsStorage.save(DEFAULT_SETTINGS);
     return DEFAULT_SETTINGS;
+  }
+};
+
+// Storage para Despesas
+export const expenseStorage = {
+  getAll: (): Expense[] => {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem('expenses');
+    return data ? JSON.parse(data) : [];
+  },
+  
+  save: (expenses: Expense[]) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('expenses', JSON.stringify(expenses));
+  },
+  
+  add: (expense: Omit<Expense, 'id'>) => {
+    const expenses = expenseStorage.getAll();
+    const newExpense: Expense = {
+      ...expense,
+      id: generateId(),
+    };
+    expenses.push(newExpense);
+    expenseStorage.save(expenses);
+    return newExpense;
+  },
+  
+  update: (id: string, updates: Partial<Expense>) => {
+    const expenses = expenseStorage.getAll();
+    const index = expenses.findIndex(e => e.id === id);
+    if (index !== -1) {
+      expenses[index] = { ...expenses[index], ...updates };
+      expenseStorage.save(expenses);
+      return expenses[index];
+    }
+    return null;
+  },
+  
+  delete: (id: string) => {
+    const expenses = expenseStorage.getAll();
+    const filtered = expenses.filter(e => e.id !== id);
+    expenseStorage.save(filtered);
+  },
+  
+  getById: (id: string): Expense | undefined => {
+    const expenses = expenseStorage.getAll();
+    return expenses.find(e => e.id === id);
+  }
+};
+
+// Storage para Parcelamentos
+export const installmentStorage = {
+  getAll: (): InstallmentPayment[] => {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem('installments');
+    return data ? JSON.parse(data) : [];
+  },
+  
+  save: (installments: InstallmentPayment[]) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('installments', JSON.stringify(installments));
+  },
+  
+  add: (installment: Omit<InstallmentPayment, 'id'>) => {
+    const installments = installmentStorage.getAll();
+    const newInstallment: InstallmentPayment = {
+      ...installment,
+      id: generateId(),
+    };
+    installments.push(newInstallment);
+    installmentStorage.save(installments);
+    return newInstallment;
+  },
+  
+  update: (id: string, updates: Partial<InstallmentPayment>) => {
+    const installments = installmentStorage.getAll();
+    const index = installments.findIndex(i => i.id === id);
+    if (index !== -1) {
+      installments[index] = { ...installments[index], ...updates };
+      installmentStorage.save(installments);
+      return installments[index];
+    }
+    return null;
+  },
+  
+  delete: (id: string) => {
+    const installments = installmentStorage.getAll();
+    const filtered = installments.filter(i => i.id !== id);
+    installmentStorage.save(filtered);
+  },
+  
+  getById: (id: string): InstallmentPayment | undefined => {
+    const installments = installmentStorage.getAll();
+    return installments.find(i => i.id === id);
+  },
+  
+  markInstallmentAsPaid: (id: string, installmentIndex: number) => {
+    const installments = installmentStorage.getAll();
+    const installment = installments.find(i => i.id === id);
+    if (installment && installmentIndex < installment.paid.length) {
+      installment.paid[installmentIndex] = true;
+      installmentStorage.save(installments);
+      return installment;
+    }
+    return null;
+  }
+};
+
+// Storage para Materiais (Catálogo)
+export const materialStorage = {
+  getAll: (): Material[] => {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem('materials');
+    return data ? JSON.parse(data) : [];
+  },
+  
+  save: (materials: Material[]) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('materials', JSON.stringify(materials));
+  },
+  
+  add: (material: Omit<Material, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const materials = materialStorage.getAll();
+    const newMaterial: Material = {
+      ...material,
+      id: generateId(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    materials.push(newMaterial);
+    materialStorage.save(materials);
+    return newMaterial;
+  },
+  
+  update: (id: string, updates: Partial<Material>) => {
+    const materials = materialStorage.getAll();
+    const index = materials.findIndex(m => m.id === id);
+    if (index !== -1) {
+      materials[index] = { ...materials[index], ...updates, updatedAt: new Date() };
+      materialStorage.save(materials);
+      return materials[index];
+    }
+    return null;
+  },
+  
+  delete: (id: string) => {
+    const materials = materialStorage.getAll();
+    const filtered = materials.filter(m => m.id !== id);
+    materialStorage.save(filtered);
+  },
+  
+  getById: (id: string): Material | undefined => {
+    const materials = materialStorage.getAll();
+    return materials.find(m => m.id === id);
+  }
+};
+
+// Storage para Preços por Categoria
+export const categoryPriceStorage = {
+  getAll: (): CategoryPrice[] => {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem('categoryPrices');
+    return data ? JSON.parse(data) : [];
+  },
+  
+  save: (categoryPrices: CategoryPrice[]) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('categoryPrices', JSON.stringify(categoryPrices));
+  },
+  
+  add: (categoryPrice: Omit<CategoryPrice, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const categoryPrices = categoryPriceStorage.getAll();
+    const newCategoryPrice: CategoryPrice = {
+      ...categoryPrice,
+      id: generateId(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    categoryPrices.push(newCategoryPrice);
+    categoryPriceStorage.save(categoryPrices);
+    return newCategoryPrice;
+  },
+  
+  update: (id: string, updates: Partial<CategoryPrice>) => {
+    const categoryPrices = categoryPriceStorage.getAll();
+    const index = categoryPrices.findIndex(cp => cp.id === id);
+    if (index !== -1) {
+      categoryPrices[index] = { ...categoryPrices[index], ...updates, updatedAt: new Date() };
+      categoryPriceStorage.save(categoryPrices);
+      return categoryPrices[index];
+    }
+    return null;
+  },
+  
+  delete: (id: string) => {
+    const categoryPrices = categoryPriceStorage.getAll();
+    const filtered = categoryPrices.filter(cp => cp.id !== id);
+    categoryPriceStorage.save(filtered);
+  },
+  
+  getByCategory: (categoryName: string): CategoryPrice | undefined => {
+    const categoryPrices = categoryPriceStorage.getAll();
+    return categoryPrices.find(cp => cp.categoryName.toLowerCase() === categoryName.toLowerCase());
   }
 };

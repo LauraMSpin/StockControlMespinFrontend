@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sale, Customer, SaleItem } from '@/types';
-import { saleStorage, customerStorage } from '@/lib/storage';
+import { Sale, Customer, SaleItem, Product, PriceHistory } from '@/types';
+import { saleStorage, customerStorage, productStorage } from '@/lib/storage';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function ReportsPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'year'>('month');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [selectedView, setSelectedView] = useState<'dashboard' | 'priceHistory'>('dashboard');
 
   useEffect(() => {
     loadData();
@@ -18,6 +21,7 @@ export default function ReportsPage() {
   const loadData = () => {
     setSales(saleStorage.getAll());
     setCustomers(customerStorage.getAll());
+    setProducts(productStorage.getAll());
   };
 
   const getFilteredSales = () => {
@@ -151,6 +155,255 @@ export default function ReportsPage() {
         <h1 className="text-3xl font-bold text-[#2C1810]">Relatórios e Análises</h1>
         <p className="text-[#814923] mt-2">Visualize estatísticas e insights sobre suas vendas</p>
       </div>
+
+      {/* Tabs de navegação */}
+      <div className="flex gap-4 mb-6 border-b border-gray-200">
+        <button
+          onClick={() => setSelectedView('dashboard')}
+          className={`px-6 py-3 font-medium transition-colors ${
+            selectedView === 'dashboard'
+              ? 'text-[#22452B] border-b-2 border-[#22452B]'
+              : 'text-gray-500 hover:text-[#22452B]'
+          }`}
+        >
+          📊 Dashboard
+        </button>
+        <button
+          onClick={() => setSelectedView('priceHistory')}
+          className={`px-6 py-3 font-medium transition-colors ${
+            selectedView === 'priceHistory'
+              ? 'text-[#22452B] border-b-2 border-[#22452B]'
+              : 'text-gray-500 hover:text-[#22452B]'
+          }`}
+        >
+          📈 Histórico de Preços
+        </button>
+      </div>
+
+      {selectedView === 'priceHistory' ? (
+        <div className="space-y-6">
+          {/* Gráfico de Linhas por Categoria */}
+          {(() => {
+            const productsWithHistory = products.filter(p => p.priceHistory && p.priceHistory.length > 0 && p.category);
+            
+            if (productsWithHistory.length === 0) {
+              return null;
+            }
+
+            // Agrupar produtos por categoria
+            const productsByCategory = productsWithHistory.reduce((acc, product) => {
+              const category = product.category || 'Sem Categoria';
+              if (!acc[category]) {
+                acc[category] = [];
+              }
+              acc[category].push(product);
+              return acc;
+            }, {} as Record<string, typeof productsWithHistory>);
+
+            // Coletar todas as datas únicas de todos os produtos
+            const allDates = new Set<string>();
+            productsWithHistory.forEach(product => {
+              // Adicionar data de criação
+              allDates.add(new Date(product.createdAt).toISOString());
+              // Adicionar datas do histórico
+              product.priceHistory?.forEach(h => {
+                allDates.add(new Date(h.date).toISOString());
+              });
+            });
+
+            // Ordenar datas
+            const sortedDates = Array.from(allDates).sort();
+
+            // Preparar dados para o gráfico agrupados por categoria
+            const chartData = sortedDates.map(dateStr => {
+              const date = new Date(dateStr);
+              const dataPoint: any = {
+                date: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+                fullDate: date,
+              };
+
+              // Para cada categoria, calcular preço médio nessa data
+              Object.entries(productsByCategory).forEach(([category, categoryProducts]) => {
+                const pricesAtDate: number[] = [];
+                
+                categoryProducts.forEach(product => {
+                  const productHistory = product.priceHistory || [];
+                  let priceAtDate = null;
+                  
+                  // Verificar histórico ordenado cronologicamente
+                  const sortedHistory = [...productHistory].sort((a, b) => 
+                    new Date(a.date).getTime() - new Date(b.date).getTime()
+                  );
+                  
+                  for (const h of sortedHistory) {
+                    if (new Date(h.date) <= date) {
+                      priceAtDate = h.price;
+                    } else {
+                      break;
+                    }
+                  }
+                  
+                  // Se não encontrou no histórico, usar preço atual se a data for após a criação
+                  if (priceAtDate === null && new Date(product.createdAt) <= date) {
+                    priceAtDate = product.price;
+                  }
+                  
+                  if (priceAtDate !== null) {
+                    pricesAtDate.push(priceAtDate);
+                  }
+                });
+                
+                // Calcular preço médio da categoria nessa data
+                if (pricesAtDate.length > 0) {
+                  const avgPrice = pricesAtDate.reduce((sum, p) => sum + p, 0) / pricesAtDate.length;
+                  dataPoint[category] = avgPrice;
+                }
+              });
+
+              return dataPoint;
+            });
+
+            // Cores para as linhas
+            const colors = ['#22452B', '#AF6138', '#B49959', '#5D663D', '#814923', '#2C5A38', '#C17A4F', '#D4AF37', '#6B7B42', '#A05A2C'];
+            const categories = Object.keys(productsByCategory);
+
+            return (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-semibold text-[#2C1810] mb-6">Gráfico de Evolução de Preços por Categoria</h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  Mostra o preço médio de cada categoria ao longo do tempo
+                </p>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => `R$ ${value.toFixed(2)}`}
+                    />
+                    <Tooltip 
+                      formatter={(value: any) => [`R$ ${value.toFixed(2)} (média)`, '']}
+                      labelFormatter={(label) => `Data: ${label}`}
+                    />
+                    <Legend />
+                    {categories.map((category, idx) => (
+                      <Line
+                        key={category}
+                        type="monotone"
+                        dataKey={category}
+                        name={`${category} (${productsByCategory[category].length} produto${productsByCategory[category].length > 1 ? 's' : ''})`}
+                        stroke={colors[idx % colors.length]}
+                        strokeWidth={3}
+                        dot={{ r: 5 }}
+                        activeDot={{ r: 7 }}
+                        connectNulls={false}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            );
+          })()}
+
+          {/* Tabelas de Histórico Detalhado */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold text-[#2C1810] mb-6">Histórico Detalhado por Produto</h2>
+            
+            <div className="space-y-6">
+            {products
+              .filter(product => product.priceHistory && product.priceHistory.length > 0)
+              .map(product => (
+                <div key={product.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#2C1810]">{product.name}</h3>
+                      {product.category && (
+                        <span className="text-sm text-gray-500">{product.category}</span>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Preço Atual</p>
+                      <p className="text-xl font-bold text-[#22452B]">R$ {product.price.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Histórico de Mudanças:</h4>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Data</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Preço</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Variação</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Motivo</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {product.priceHistory!
+                            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                            .map((history, idx, arr) => {
+                              const previousPrice = idx < arr.length - 1 ? arr[idx + 1].price : product.price;
+                              const variation = history.price - previousPrice;
+                              const variationPercent = previousPrice > 0 ? (variation / previousPrice) * 100 : 0;
+                              
+                              return (
+                                <tr key={idx} className="hover:bg-gray-50">
+                                  <td className="px-4 py-2 text-sm text-gray-900">
+                                    {new Date(history.date).toLocaleDateString('pt-BR', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm font-semibold text-gray-900">
+                                    R$ {history.price.toFixed(2)}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm">
+                                    {variation !== 0 && (
+                                      <span className={`font-medium ${variation > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {variation > 0 ? '+' : ''}R$ {variation.toFixed(2)} ({variation > 0 ? '+' : ''}{variationPercent.toFixed(1)}%)
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm text-gray-600">
+                                    {history.reason || '-'}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            
+            {products.filter(p => p.priceHistory && p.priceHistory.length > 0).length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">📈</div>
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                  Nenhum histórico de preços
+                </h3>
+                <p className="text-gray-500">
+                  Alterações de preços aparecerão aqui quando você atualizar os preços dos produtos
+                </p>
+              </div>
+            )}
+          </div>
+          </div>
+        </div>
+      ) : (
+        <>
+      {/* Dashboard - continua aqui */}
 
       {/* Filtros de Data */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -422,6 +675,8 @@ export default function ReportsPage() {
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

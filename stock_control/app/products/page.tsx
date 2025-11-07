@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Product } from '@/types';
-import { productStorage, settingsStorage } from '@/lib/storage';
+import { productStorage, settingsStorage, categoryPriceStorage } from '@/lib/storage';
 import Link from 'next/link';
 
 export default function ProductsPage() {
@@ -406,13 +406,27 @@ export default function ProductsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Categoria
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    placeholder="Ex: Vela Decorativa"
+                    onChange={(e) => {
+                      const newCategory = e.target.value;
+                      setFormData({ ...formData, category: newCategory });
+                      
+                      // Buscar preço da categoria se existir
+                      const categoryPrice = categoryPriceStorage.getByCategory(newCategory);
+                      if (categoryPrice && !editingProduct) {
+                        setFormData(prev => ({ ...prev, category: newCategory, price: categoryPrice.price.toString() }));
+                      }
+                    }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  >
+                    <option value="">Selecione uma categoria</option>
+                    {categoryPriceStorage.getAll().map((cp) => (
+                      <option key={cp.id} value={cp.categoryName}>
+                        {cp.categoryName} - R$ {cp.price.toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -454,6 +468,19 @@ export default function ProductsPage() {
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+                  {formData.category && (() => {
+                    const categoryPrice = categoryPriceStorage.getByCategory(formData.category);
+                    if (categoryPrice && formData.price === categoryPrice.price.toString()) {
+                      return (
+                        <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          Preço aplicado da categoria "{categoryPrice.categoryName}"
+                        </p>
+                      );
+                    }
+                  })()}
                 </div>
 
                 <div>

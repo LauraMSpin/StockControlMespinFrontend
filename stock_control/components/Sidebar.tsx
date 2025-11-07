@@ -10,16 +10,22 @@ import {
   ShoppingCartIcon,
   ClipboardDocumentListIcon,
   ChartBarIcon,
+  CurrencyDollarIcon,
+  BeakerIcon,
+  TagIcon,
   Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'Produtos', href: '/products', icon: ShoppingBagIcon },
+  { name: 'Preços por Categoria', href: '/category-prices', icon: TagIcon },
+  { name: 'Custos de Produção', href: '/production-costs', icon: BeakerIcon },
   { name: 'Clientes', href: '/customers', icon: UsersIcon },
   { name: 'Vendas', href: '/sales', icon: ShoppingCartIcon },
   { name: 'Encomendas', href: '/orders', icon: ClipboardDocumentListIcon },
   { name: 'Relatórios', href: '/reports', icon: ChartBarIcon },
+  { name: 'Financeiro', href: '/financial', icon: CurrencyDollarIcon },
   { name: 'Configurações', href: '/settings', icon: Cog6ToothIcon },
 ];
 
