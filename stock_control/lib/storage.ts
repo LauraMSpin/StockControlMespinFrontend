@@ -121,21 +121,62 @@ export const saleStorage = {
     const newSale: Sale = {
       ...sale,
       id: generateId(),
+      status: sale.status || 'pending', // Status padrão
     };
     sales.push(newSale);
     saleStorage.save(sales);
     
-    // Atualizar estoque
-    sale.items.forEach(item => {
-      const product = productStorage.getById(item.productId);
-      if (product) {
-        productStorage.update(item.productId, {
-          quantity: product.quantity - item.quantity
-        });
-      }
-    });
+    // Atualizar estoque apenas se a venda não for cancelada
+    if (sale.status !== 'cancelled') {
+      sale.items.forEach(item => {
+        const product = productStorage.getById(item.productId);
+        if (product) {
+          productStorage.update(item.productId, {
+            quantity: product.quantity - item.quantity
+          });
+        }
+      });
+    }
     
     return newSale;
+  },
+  
+  update: (id: string, updates: Partial<Sale>) => {
+    const sales = saleStorage.getAll();
+    const index = sales.findIndex(s => s.id === id);
+    if (index !== -1) {
+      const oldSale = sales[index];
+      const newSale = { ...oldSale, ...updates };
+      
+      // Se o status mudou de cancelado para outro, devolver ao estoque
+      if (oldSale.status !== 'cancelled' && updates.status === 'cancelled') {
+        oldSale.items.forEach(item => {
+          const product = productStorage.getById(item.productId);
+          if (product) {
+            productStorage.update(item.productId, {
+              quantity: product.quantity + item.quantity
+            });
+          }
+        });
+      }
+      
+      // Se o status mudou de cancelado para outro, remover do estoque
+      if (oldSale.status === 'cancelled' && updates.status && updates.status !== 'cancelled') {
+        oldSale.items.forEach(item => {
+          const product = productStorage.getById(item.productId);
+          if (product) {
+            productStorage.update(item.productId, {
+              quantity: product.quantity - item.quantity
+            });
+          }
+        });
+      }
+      
+      sales[index] = newSale;
+      saleStorage.save(sales);
+      return newSale;
+    }
+    return null;
   },
   
   getById: (id: string): Sale | undefined => {

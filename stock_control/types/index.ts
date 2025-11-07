@@ -39,6 +39,7 @@ export interface Sale {
   items: SaleItem[];
   totalAmount: number;
   saleDate: Date;
+  status: 'pending' | 'awaiting_payment' | 'paid' | 'cancelled';
   notes?: string;
 }
 

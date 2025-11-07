@@ -14,7 +14,9 @@ export default function SalesPage() {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [notes, setNotes] = useState('');
+  const [saleStatus, setSaleStatus] = useState<'pending' | 'awaiting_payment' | 'paid' | 'cancelled'>('pending');
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
+  const [editingStatus, setEditingStatus] = useState<{ saleId: string; currentStatus: Sale['status'] } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -82,12 +84,14 @@ export default function SalesPage() {
     const customer = customers.find(c => c.id === selectedCustomer);
     if (!customer) return;
 
-    // Verificar estoque antes de finalizar
-    for (const item of saleItems) {
-      const product = productStorage.getById(item.productId);
-      if (!product || product.quantity < item.quantity) {
-        alert(`Estoque insuficiente para ${item.productName}`);
-        return;
+    // Verificar estoque antes de finalizar (exceto se for cancelado)
+    if (saleStatus !== 'cancelled') {
+      for (const item of saleItems) {
+        const product = productStorage.getById(item.productId);
+        if (!product || product.quantity < item.quantity) {
+          alert(`Estoque insuficiente para ${item.productName}`);
+          return;
+        }
       }
     }
 
@@ -97,6 +101,7 @@ export default function SalesPage() {
       items: saleItems,
       totalAmount: calculateTotal(),
       saleDate: new Date(),
+      status: saleStatus,
       notes: notes
     };
 
@@ -114,11 +119,51 @@ export default function SalesPage() {
     setSelectedProduct('');
     setQuantity('1');
     setNotes('');
+    setSaleStatus('pending');
+  };
+
+  const handleUpdateStatus = (saleId: string, newStatus: Sale['status']) => {
+    saleStorage.update(saleId, { status: newStatus });
+    loadData();
+    setEditingStatus(null);
+  };
+
+  const getStatusBadge = (status: Sale['status']) => {
+    const badges = {
+      pending: 'bg-gray-100 text-gray-800',
+      awaiting_payment: 'bg-yellow-100 text-yellow-800',
+      paid: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800',
+    };
+
+    const labels = {
+      pending: 'Pendente',
+      awaiting_payment: 'Aguardando Pagamento',
+      paid: 'Pago',
+      cancelled: 'Cancelado',
+    };
+
+    return (
+      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${badges[status]}`}>
+        {labels[status]}
+      </span>
+    );
+  };
+
+  const filterSalesByStatus = (status: Sale['status']) => {
+    return sales.filter(sale => sale.status === status);
   };
 
   const printInvoice = (sale: Sale) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+
+    const statusLabels = {
+      pending: 'Pendente',
+      awaiting_payment: 'Aguardando Pagamento',
+      paid: 'Pago',
+      cancelled: 'Cancelado',
+    };
 
     const invoiceHTML = `
       <!DOCTYPE html>
@@ -141,6 +186,17 @@ export default function SalesPage() {
           .info {
             margin-bottom: 20px;
           }
+          .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.875em;
+            font-weight: 600;
+          }
+          .status-pending { background-color: #f3f4f6; color: #374151; }
+          .status-awaiting_payment { background-color: #fef3c7; color: #92400e; }
+          .status-paid { background-color: #d1fae5; color: #065f46; }
+          .status-cancelled { background-color: #fee2e2; color: #991b1b; }
           table {
             width: 100%;
             border-collapse: collapse;
@@ -180,6 +236,8 @@ export default function SalesPage() {
           <p><strong>Nota:</strong> #${sale.id}</p>
           <p><strong>Data:</strong> ${new Date(sale.saleDate).toLocaleString('pt-BR')}</p>
           <p><strong>Cliente:</strong> ${sale.customerName}</p>
+          <p><strong>Status:</strong> <span class="status status-${sale.status}">${statusLabels[sale.status]}</span></p>
+        </div>
         </div>
 
         <table>
@@ -245,6 +303,65 @@ export default function SalesPage() {
         </button>
       </div>
 
+      {/* Resumo de Status */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Pendentes</p>
+              <p className="text-2xl font-bold text-gray-600">{filterSalesByStatus('pending').length}</p>
+            </div>
+            <div className="p-3 bg-gray-100 rounded-full">
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Aguardando Pagamento</p>
+              <p className="text-2xl font-bold text-yellow-600">{filterSalesByStatus('awaiting_payment').length}</p>
+            </div>
+            <div className="p-3 bg-yellow-100 rounded-full">
+              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Pagas</p>
+              <p className="text-2xl font-bold text-green-600">{filterSalesByStatus('paid').length}</p>
+            </div>
+            <div className="p-3 bg-green-100 rounded-full">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Canceladas</p>
+              <p className="text-2xl font-bold text-red-600">{filterSalesByStatus('cancelled').length}</p>
+            </div>
+            <div className="p-3 bg-red-100 rounded-full">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {sales.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,6 +393,9 @@ export default function SalesPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ações
                 </th>
@@ -299,6 +419,31 @@ export default function SalesPage() {
                     <span className="text-sm font-semibold text-green-600">
                       R$ {sale.totalAmount.toFixed(2)}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {editingStatus?.saleId === sale.id ? (
+                      <select
+                        value={editingStatus.currentStatus}
+                        onChange={(e) => {
+                          handleUpdateStatus(sale.id, e.target.value as Sale['status']);
+                        }}
+                        onBlur={() => setEditingStatus(null)}
+                        autoFocus
+                        className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="pending">Pendente</option>
+                        <option value="awaiting_payment">Aguardando Pagamento</option>
+                        <option value="paid">Pago</option>
+                        <option value="cancelled">Cancelado</option>
+                      </select>
+                    ) : (
+                      <button
+                        onClick={() => setEditingStatus({ saleId: sale.id, currentStatus: sale.status })}
+                        className="hover:opacity-80"
+                      >
+                        {getStatusBadge(sale.status)}
+                      </button>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
@@ -437,6 +582,28 @@ export default function SalesPage() {
               />
             </div>
 
+            {/* Status da Venda */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status da Venda *
+              </label>
+              <select
+                value={saleStatus}
+                onChange={(e) => setSaleStatus(e.target.value as Sale['status'])}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                <option value="pending">Pendente</option>
+                <option value="awaiting_payment">Aguardando Pagamento</option>
+                <option value="paid">Pago</option>
+                <option value="cancelled">Cancelado</option>
+              </select>
+              {saleStatus === 'cancelled' && (
+                <p className="mt-2 text-sm text-red-600">
+                  ⚠️ Vendas canceladas não descontarão do estoque
+                </p>
+              )}
+            </div>
+
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => {
@@ -472,6 +639,10 @@ export default function SalesPage() {
               <div>
                 <span className="text-sm font-medium text-gray-500">Cliente:</span>
                 <p className="text-gray-900">{viewingSale.customerName}</p>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-500">Status:</span>
+                <div className="mt-1">{getStatusBadge(viewingSale.status)}</div>
               </div>
             </div>
 

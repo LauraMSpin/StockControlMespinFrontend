@@ -21,7 +21,10 @@ export default function Home() {
 
     const lowStock = products.filter(p => p.quantity < 10).length;
     const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
-    const revenue = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    // Calcular receita apenas das vendas com status "paid"
+    const revenue = sales
+      .filter(sale => sale.status === 'paid')
+      .reduce((sum, sale) => sum + sale.totalAmount, 0);
 
     setStats({
       totalProducts: products.length,
