@@ -5,6 +5,9 @@ import Sidebar from "@/components/Sidebar";
 export const metadata: Metadata = {
   title: "Controle de Estoque - Velas Aromáticas",
   description: "Sistema de controle de estoque para velas aromáticas",
+  icons: {
+    icon: '/logo.png',
+  },
 };
 
 export default function RootLayout({
@@ -15,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className="antialiased">
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex h-screen bg-[#FAF8F5]">
           <Sidebar />
           <main className="flex-1 overflow-y-auto">
             {children}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Sale, SaleItem, Product, Customer } from '@/types';
-import { saleStorage, productStorage, customerStorage } from '@/lib/storage';
+import { saleStorage, productStorage, customerStorage, settingsStorage } from '@/lib/storage';
 
 export default function SalesPage() {
   const searchParams = useSearchParams();
@@ -243,6 +243,8 @@ export default function SalesPage() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    const settings = settingsStorage.get();
+
     const statusLabels = {
       pending: 'Pendente',
       awaiting_payment: 'Aguardando Pagamento',
@@ -267,6 +269,11 @@ export default function SalesPage() {
             border-bottom: 2px solid #333;
             padding-bottom: 20px;
             margin-bottom: 20px;
+          }
+          .header img {
+            max-width: 200px;
+            height: auto;
+            margin-bottom: 10px;
           }
           .info {
             margin-bottom: 20px;
@@ -313,8 +320,12 @@ export default function SalesPage() {
       </head>
       <body>
         <div class="header">
-          <h1>🕯️ Velas Aromáticas</h1>
+          <img src="/logo.png" alt="${settings.companyName}" />
+          <h1>${settings.companyName}</h1>
           <h2>Nota de Venda</h2>
+          ${settings.companyPhone ? `<p style="margin: 5px 0;">📞 ${settings.companyPhone}</p>` : ''}
+          ${settings.companyEmail ? `<p style="margin: 5px 0;">📧 ${settings.companyEmail}</p>` : ''}
+          ${settings.companyAddress ? `<p style="margin: 5px 0;">📍 ${settings.companyAddress}</p>` : ''}
         </div>
         
         <div class="info">
@@ -329,7 +340,6 @@ export default function SalesPage() {
             sale.paymentMethod === 'credit' ? '💳 Cartão de Crédito' : ''
           }</p>` : ''}
           ${sale.fromOrder ? '<p style="color: #1d4ed8; font-weight: 600; margin-top: 8px;">📦 Origem: Encomenda (não afeta estoque)</p>' : ''}
-        </div>
         </div>
 
         <table>

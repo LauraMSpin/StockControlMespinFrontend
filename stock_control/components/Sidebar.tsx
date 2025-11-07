@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { 
   HomeIcon, 
@@ -24,9 +25,16 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col w-64 bg-gray-900 min-h-screen">
-      <div className="flex items-center justify-center h-20 shadow-md">
-        <h1 className="text-2xl font-bold text-white">🕯️ Velas Aromáticas</h1>
+    <div className="flex flex-col w-64 bg-[#3D3530] min-h-screen">
+      <div className="flex items-center justify-center h-24 shadow-md px-4 py-4 bg-[#2D2520]">
+        <Image 
+          src="/logo.png" 
+          alt="Logo Velas Aromáticas" 
+          width={150}
+          height={50}
+          className="object-contain max-h-20 w-full"
+          priority
+        />
       </div>
       <nav className="flex-1 px-2 py-4 space-y-2">
         {navigation.map((item) => {
@@ -38,8 +46,8 @@ export default function Sidebar() {
               href={item.href}
               className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 isActive
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  ? 'bg-[#8B7355] text-white'
+                  : 'text-[#E8E4DC] hover:bg-[#6B563E] hover:text-white'
               }`}
             >
               <Icon className="w-5 h-5 mr-3" />
@@ -48,7 +56,7 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div className="px-4 py-4 text-xs text-gray-500 border-t border-gray-800">
+      <div className="px-4 py-4 text-xs text-[#B8A894] border-t border-[#6B563E]">
         Sistema de Controle de Estoque v1.0
       </div>
     </div>
