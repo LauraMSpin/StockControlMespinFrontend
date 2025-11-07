@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Product } from '@/types';
-import { productStorage } from '@/lib/storage';
+import { productStorage, settingsStorage } from '@/lib/storage';
 import Link from 'next/link';
 
 export default function ProductsPage() {
@@ -11,6 +11,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -22,6 +23,8 @@ export default function ProductsPage() {
   });
 
   useEffect(() => {
+    const settings = settingsStorage.get();
+    setLowStockThreshold(settings.lowStockThreshold);
     loadProducts();
     
     // Verificar se deve abrir o modal automaticamente
@@ -202,7 +205,7 @@ export default function ProductsPage() {
                       <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                         Esgotado
                       </span>
-                    ) : product.quantity < 10 ? (
+                    ) : product.quantity < lowStockThreshold ? (
                       <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                         Baixo
                       </span>

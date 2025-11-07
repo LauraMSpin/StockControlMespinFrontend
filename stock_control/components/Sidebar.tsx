@@ -7,7 +7,8 @@ import {
   ShoppingBagIcon, 
   UsersIcon, 
   ShoppingCartIcon,
-  ClipboardDocumentListIcon 
+  ClipboardDocumentListIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -16,6 +17,7 @@ const navigation = [
   { name: 'Clientes', href: '/customers', icon: UsersIcon },
   { name: 'Vendas', href: '/sales', icon: ShoppingCartIcon },
   { name: 'Encomendas', href: '/orders', icon: ClipboardDocumentListIcon },
+  { name: 'Configurações', href: '/settings', icon: Cog6ToothIcon },
 ];
 
 export default function Sidebar() {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Product } from '@/types';
-import { productStorage, customerStorage, saleStorage, orderStorage } from '@/lib/storage';
+import { productStorage, customerStorage, saleStorage, orderStorage, settingsStorage } from '@/lib/storage';
 
 export default function Home() {
   const router = useRouter();
@@ -15,14 +15,18 @@ export default function Home() {
     totalRevenue: 0,
   });
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
+  const [lowStockThreshold, setLowStockThreshold] = useState(10);
 
   useEffect(() => {
+    const settings = settingsStorage.get();
+    setLowStockThreshold(settings.lowStockThreshold);
+    
     const products = productStorage.getAll();
     const customers = customerStorage.getAll();
     const sales = saleStorage.getAll();
     const orders = orderStorage.getAll();
 
-    const lowStock = products.filter(p => p.quantity < 10);
+    const lowStock = products.filter(p => p.quantity < settings.lowStockThreshold);
     const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
     // Calcular receita apenas das vendas com status "paid"
     const revenue = sales
@@ -188,7 +192,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">Produtos com Estoque Baixo</h2>
-                  <p className="text-sm text-gray-600">Produtos com menos de 10 unidades em estoque</p>
+                  <p className="text-sm text-gray-600">Produtos com menos de {lowStockThreshold} unidades em estoque</p>
                 </div>
               </div>
               

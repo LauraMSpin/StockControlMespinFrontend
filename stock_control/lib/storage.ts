@@ -1,5 +1,5 @@
 // Sistema de armazenamento local usando localStorage
-import { Product, Customer, Sale, Order } from '@/types';
+import { Product, Customer, Sale, Order, Settings } from '@/types';
 
 // Função auxiliar para gerar IDs únicos
 export const generateId = () => {
@@ -277,5 +277,39 @@ export const orderStorage = {
     const orders = orderStorage.getAll();
     const filtered = orders.filter(o => o.id !== id);
     orderStorage.save(filtered);
+  }
+};
+
+// Storage para Configurações
+const DEFAULT_SETTINGS: Settings = {
+  lowStockThreshold: 10,
+  companyName: 'Velas Aromáticas',
+  companyPhone: '',
+  companyEmail: '',
+  companyAddress: '',
+};
+
+export const settingsStorage = {
+  get: (): Settings => {
+    if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+    const data = localStorage.getItem('settings');
+    return data ? JSON.parse(data) : DEFAULT_SETTINGS;
+  },
+  
+  save: (settings: Settings) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('settings', JSON.stringify(settings));
+  },
+  
+  update: (updates: Partial<Settings>) => {
+    const current = settingsStorage.get();
+    const updated = { ...current, ...updates };
+    settingsStorage.save(updated);
+    return updated;
+  },
+  
+  reset: () => {
+    settingsStorage.save(DEFAULT_SETTINGS);
+    return DEFAULT_SETTINGS;
   }
 };

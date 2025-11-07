@@ -59,3 +59,11 @@ export interface Order {
   status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
   notes?: string;
 }
+
+export interface Settings {
+  lowStockThreshold: number;
+  companyName: string;
+  companyPhone?: string;
+  companyEmail?: string;
+  companyAddress?: string;
+}
