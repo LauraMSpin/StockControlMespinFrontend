@@ -9,6 +9,7 @@ import {
   UsersIcon, 
   ShoppingCartIcon,
   ClipboardDocumentListIcon,
+  ChartBarIcon,
   Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
@@ -18,6 +19,7 @@ const navigation = [
   { name: 'Clientes', href: '/customers', icon: UsersIcon },
   { name: 'Vendas', href: '/sales', icon: ShoppingCartIcon },
   { name: 'Encomendas', href: '/orders', icon: ClipboardDocumentListIcon },
+  { name: 'Relatórios', href: '/reports', icon: ChartBarIcon },
   { name: 'Configurações', href: '/settings', icon: Cog6ToothIcon },
 ];
 

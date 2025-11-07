@@ -216,6 +216,31 @@ export const saleStorage = {
     return null;
   },
   
+  delete: (id: string) => {
+    const sales = saleStorage.getAll();
+    const saleToDelete = sales.find(s => s.id === id);
+    
+    if (!saleToDelete) {
+      throw new Error('Venda não encontrada');
+    }
+    
+    // Se a venda foi paga e não veio de encomenda, devolver itens ao estoque
+    if (saleToDelete.status === 'paid' && !saleToDelete.fromOrder) {
+      saleToDelete.items.forEach(item => {
+        const product = productStorage.getById(item.productId);
+        if (product) {
+          productStorage.update(item.productId, {
+            quantity: product.quantity + item.quantity
+          });
+        }
+      });
+    }
+    
+    // Remover a venda
+    const updatedSales = sales.filter(s => s.id !== id);
+    saleStorage.save(updatedSales);
+  },
+  
   getById: (id: string): Sale | undefined => {
     const sales = saleStorage.getAll();
     return sales.find(s => s.id === id);

@@ -23,6 +23,7 @@ export default function SalesPage() {
   const [editingStatus, setEditingStatus] = useState<{ saleId: string; currentStatus: Sale['status'] } | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ saleId: string; newStatus: Sale['status'] } | null>(null);
+  const [editingSale, setEditingSale] = useState<Sale | null>(null);
 
   useEffect(() => {
     loadData();
@@ -97,6 +98,12 @@ export default function SalesPage() {
   };
 
   const handleSubmitSale = () => {
+    // Se está editando, usar função de atualização
+    if (editingSale) {
+      handleUpdateSale();
+      return;
+    }
+
     if (!selectedCustomer || saleItems.length === 0) {
       alert('Selecione um cliente e adicione produtos à venda!');
       return;
@@ -161,6 +168,110 @@ export default function SalesPage() {
     setDiscountPercentage('0');
     setSaleStatus('pending');
     setPaymentMethod('');
+    setEditingSale(null);
+  };
+
+  const handleEditSale = (sale: Sale) => {
+    if (sale.status === 'paid') {
+      alert('Vendas pagas não podem ser editadas!');
+      return;
+    }
+
+    // Preencher o formulário com os dados da venda
+    setEditingSale(sale);
+    setSelectedCustomer(sale.customerId);
+    setSaleItems([...sale.items]);
+    setNotes(sale.notes || '');
+    setDiscountPercentage(sale.discountPercentage.toString());
+    setSaleStatus(sale.status);
+    setPaymentMethod(sale.paymentMethod || '');
+    setViewingSale(null);
+    setShowModal(true);
+  };
+
+  const handleUpdateSale = () => {
+    if (!editingSale) return;
+    
+    if (!selectedCustomer || saleItems.length === 0) {
+      alert('Selecione um cliente e adicione produtos à venda!');
+      return;
+    }
+
+    // Validar método de pagamento se o status for "paid"
+    if (saleStatus === 'paid' && !paymentMethod) {
+      alert('Selecione o método de pagamento para vendas pagas!');
+      return;
+    }
+
+    // Validar desconto
+    const discount = parseFloat(discountPercentage) || 0;
+    if (discount < 0 || discount > 100) {
+      alert('O desconto deve estar entre 0% e 100%!');
+      return;
+    }
+
+    const customer = customers.find(c => c.id === selectedCustomer);
+    if (!customer) return;
+
+    const subtotal = calculateSubtotal();
+    const discountAmount = calculateDiscount();
+    const total = calculateTotal();
+
+    const updatedSale: Partial<Sale> = {
+      customerId: customer.id,
+      customerName: customer.name,
+      items: saleItems,
+      subtotal: subtotal,
+      discountPercentage: discount,
+      discountAmount: discountAmount,
+      totalAmount: total,
+      status: saleStatus,
+      paymentMethod: saleStatus === 'paid' ? paymentMethod as 'cash' | 'pix' | 'debit' | 'credit' : undefined,
+      notes: notes
+    };
+
+    try {
+      saleStorage.update(editingSale.id, updatedSale);
+      
+      resetForm();
+      loadData();
+      setShowModal(false);
+      alert('Venda atualizada com sucesso!');
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao atualizar venda: ${error.message}`);
+      } else {
+        alert('Erro desconhecido ao atualizar venda');
+      }
+    }
+  };
+
+  const handleDeleteSale = (saleId: string) => {
+    const sale = sales.find(s => s.id === saleId);
+    if (!sale) return;
+
+    if (sale.status === 'paid') {
+      const confirmDelete = window.confirm(
+        'Esta venda já foi paga. Ao excluí-la, o estoque será devolvido. Deseja continuar?'
+      );
+      if (!confirmDelete) return;
+    } else {
+      const confirmDelete = window.confirm('Deseja realmente excluir esta venda?');
+      if (!confirmDelete) return;
+    }
+
+    try {
+      saleStorage.delete(saleId);
+      loadData();
+      setViewingSale(null);
+      alert('Venda excluída com sucesso!');
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao excluir venda: ${error.message}`);
+      } else {
+        alert('Erro desconhecido ao excluir venda');
+      }
+    }
   };
 
   const handleUpdateStatus = (saleId: string, newStatus: Sale['status']) => {
@@ -614,7 +725,9 @@ export default function SalesPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Nova Venda</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              {editingSale ? 'Editar Venda' : 'Nova Venda'}
+            </h2>
             
             {/* Seleção de Cliente */}
             <div className="mb-6">
@@ -816,15 +929,15 @@ export default function SalesPage() {
                   setShowModal(false);
                   resetForm();
                 }}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                className="px-6 py-2 border border-[#814923] rounded-lg text-[#814923] hover:bg-[#F5EFE7] transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSubmitSale}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                className="px-6 py-2 bg-[#814923] text-white rounded-lg hover:bg-[#AF6138] transition-colors"
               >
-                Finalizar Venda
+                {editingSale ? 'Atualizar Venda' : 'Finalizar Venda'}
               </button>
             </div>
           </div>
@@ -921,19 +1034,37 @@ export default function SalesPage() {
               </div>
             )}
 
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={() => setViewingSale(null)}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Fechar
-              </button>
-              <button
-                onClick={() => printInvoice(viewingSale)}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                Imprimir Nota
-              </button>
+            <div className="flex justify-between gap-4">
+              <div className="flex gap-2">
+                {viewingSale.status !== 'paid' && (
+                  <button
+                    onClick={() => handleEditSale(viewingSale)}
+                    className="px-6 py-2 bg-[#5D663D] text-white rounded-lg hover:bg-[#22452B] transition-colors"
+                  >
+                    Editar
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDeleteSale(viewingSale.id)}
+                  className="px-6 py-2 bg-[#AF6138] text-white rounded-lg hover:bg-[#814923] transition-colors"
+                >
+                  Excluir
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setViewingSale(null)}
+                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Fechar
+                </button>
+                <button
+                  onClick={() => printInvoice(viewingSale)}
+                  className="px-6 py-2 bg-[#814923] text-white rounded-lg hover:bg-[#AF6138] transition-colors"
+                >
+                  Imprimir Nota
+                </button>
+              </div>
             </div>
           </div>
         </div>
