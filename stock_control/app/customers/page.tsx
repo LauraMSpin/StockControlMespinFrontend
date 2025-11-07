@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Customer } from '@/types';
 import { customerStorage } from '@/lib/storage';
 
 export default function CustomersPage() {
+  const searchParams = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -19,7 +21,12 @@ export default function CustomersPage() {
 
   useEffect(() => {
     loadCustomers();
-  }, []);
+    
+    // Verificar se deve abrir o modal automaticamente
+    if (searchParams.get('openModal') === 'true') {
+      setShowModal(true);
+    }
+  }, [searchParams]);
 
   const loadCustomers = () => {
     const allCustomers = customerStorage.getAll();

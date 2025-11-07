@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Product } from '@/types';
 import { productStorage } from '@/lib/storage';
 import Link from 'next/link';
 
 export default function ProductsPage() {
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -21,7 +23,12 @@ export default function ProductsPage() {
 
   useEffect(() => {
     loadProducts();
-  }, []);
+    
+    // Verificar se deve abrir o modal automaticamente
+    if (searchParams.get('openModal') === 'true') {
+      setShowModal(true);
+    }
+  }, [searchParams]);
 
   const loadProducts = () => {
     const allProducts = productStorage.getAll();

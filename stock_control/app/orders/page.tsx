@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Order, Product, Customer } from '@/types';
 import { orderStorage, productStorage, customerStorage } from '@/lib/storage';
 import { migrateOrders } from '@/lib/migrations';
 
 export default function OrdersPage() {
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -25,7 +27,12 @@ export default function OrdersPage() {
     // Migrar encomendas antigas
     migrateOrders();
     loadData();
-  }, []);
+    
+    // Verificar se deve abrir o modal automaticamente
+    if (searchParams.get('openModal') === 'true') {
+      setShowModal(true);
+    }
+  }, [searchParams]);
 
   const loadData = () => {
     setOrders(orderStorage.getAll());

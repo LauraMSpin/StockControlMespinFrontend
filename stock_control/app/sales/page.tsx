@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Sale, SaleItem, Product, Customer } from '@/types';
 import { saleStorage, productStorage, customerStorage } from '@/lib/storage';
 
 export default function SalesPage() {
+  const searchParams = useSearchParams();
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -20,7 +22,12 @@ export default function SalesPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+    
+    // Verificar se deve abrir o modal automaticamente
+    if (searchParams.get('openModal') === 'true') {
+      setShowModal(true);
+    }
+  }, [searchParams]);
 
   const loadData = () => {
     setSales(saleStorage.getAll());
