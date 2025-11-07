@@ -522,7 +522,10 @@ export default function SalesPage() {
                     <option value="">Selecione um produto</option>
                     {products.filter(p => p.quantity > 0).map(product => (
                       <option key={product.id} value={product.id}>
-                        {product.name} - R$ {product.price.toFixed(2)} (Estoque: {product.quantity})
+                        {product.name}
+                        {product.weight ? ` (${product.weight})` : ''}
+                        {' - '}R$ {product.price.toFixed(2)}
+                        {' | '}Estoque: {product.quantity}
                       </option>
                     ))}
                   </select>
