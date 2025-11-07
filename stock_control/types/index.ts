@@ -50,6 +50,8 @@ export interface Order {
   productId: string;
   productName: string;
   quantity: number;
+  unitPrice: number;
+  totalAmount: number;
   orderDate: Date;
   expectedDeliveryDate: Date;
   status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';

@@ -213,9 +213,32 @@ export const orderStorage = {
     const orders = orderStorage.getAll();
     const index = orders.findIndex(o => o.id === id);
     if (index !== -1) {
-      orders[index] = { ...orders[index], ...updates };
+      const oldOrder = orders[index];
+      const newOrder = { ...oldOrder, ...updates };
+      
+      // Se o status mudou para "delivered", converter em venda
+      if (oldOrder.status !== 'delivered' && updates.status === 'delivered') {
+        // Criar venda automaticamente com status "paid"
+        saleStorage.add({
+          customerId: newOrder.customerId,
+          customerName: newOrder.customerName,
+          items: [{
+            productId: newOrder.productId,
+            productName: newOrder.productName,
+            quantity: newOrder.quantity,
+            unitPrice: newOrder.unitPrice,
+            totalPrice: newOrder.totalAmount
+          }],
+          totalAmount: newOrder.totalAmount,
+          saleDate: new Date(),
+          status: 'paid',
+          notes: `Encomenda #${newOrder.id} - ${newOrder.notes || ''}`
+        });
+      }
+      
+      orders[index] = newOrder;
       orderStorage.save(orders);
-      return orders[index];
+      return newOrder;
     }
     return null;
   },

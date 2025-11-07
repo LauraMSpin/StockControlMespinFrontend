@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Order, Product, Customer } from '@/types';
 import { orderStorage, productStorage, customerStorage } from '@/lib/storage';
+import { migrateOrders } from '@/lib/migrations';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -21,6 +22,8 @@ export default function OrdersPage() {
   });
 
   useEffect(() => {
+    // Migrar encomendas antigas
+    migrateOrders();
     loadData();
   }, []);
 
@@ -41,25 +44,40 @@ export default function OrdersPage() {
       return;
     }
 
+    const quantity = parseInt(formData.quantity);
+    const unitPrice = product.price;
+    const totalAmount = quantity * unitPrice;
+
     if (editingOrder) {
-      orderStorage.update(editingOrder.id, {
+      const updates = {
         customerId: formData.customerId,
         customerName: customer.name,
         productId: formData.productId,
         productName: product.name,
-        quantity: parseInt(formData.quantity),
+        quantity: quantity,
+        unitPrice: unitPrice,
+        totalAmount: totalAmount,
         orderDate: new Date(formData.orderDate),
         expectedDeliveryDate: new Date(formData.expectedDeliveryDate),
         status: formData.status,
         notes: formData.notes,
-      });
+      };
+      
+      orderStorage.update(editingOrder.id, updates);
+      
+      // Se mudou para delivered, mostrar mensagem
+      if (editingOrder.status !== 'delivered' && formData.status === 'delivered') {
+        alert('Encomenda entregue! Uma venda foi criada automaticamente no histórico de vendas.');
+      }
     } else {
       orderStorage.add({
         customerId: formData.customerId,
         customerName: customer.name,
         productId: formData.productId,
         productName: product.name,
-        quantity: parseInt(formData.quantity),
+        quantity: quantity,
+        unitPrice: unitPrice,
+        totalAmount: totalAmount,
         orderDate: new Date(formData.orderDate),
         expectedDeliveryDate: new Date(formData.expectedDeliveryDate),
         status: formData.status,
@@ -241,6 +259,9 @@ export default function OrdersPage() {
                   Quantidade
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Valor Total
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Data Pedido
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -265,6 +286,11 @@ export default function OrdersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm text-gray-900">{order.quantity} un.</span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-sm font-semibold text-green-600">
+                      R$ {order.totalAmount.toFixed(2)}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm text-gray-900">
@@ -341,7 +367,7 @@ export default function OrdersPage() {
                     <option value="">Selecione um produto</option>
                     {products.map(product => (
                       <option key={product.id} value={product.id}>
-                        {product.name}
+                        {product.name} - R$ {product.price.toFixed(2)}
                       </option>
                     ))}
                   </select>
@@ -361,6 +387,21 @@ export default function OrdersPage() {
                   />
                 </div>
 
+                {/* Valor Total Calculado */}
+                {formData.productId && formData.quantity && (
+                  <div className="md:col-span-2 bg-green-50 p-4 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">Valor Total da Encomenda:</span>
+                      <span className="text-xl font-bold text-green-600">
+                        R$ {(
+                          (products.find(p => p.id === formData.productId)?.price || 0) * 
+                          parseInt(formData.quantity || '0')
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Status *
@@ -376,6 +417,14 @@ export default function OrdersPage() {
                     <option value="delivered">Entregue</option>
                     <option value="cancelled">Cancelada</option>
                   </select>
+                  {formData.status === 'delivered' && (
+                    <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Esta encomenda será convertida em venda e adicionada ao balanço financeiro
+                    </p>
+                  )}
                 </div>
 
                 <div>
