@@ -12,6 +12,7 @@ export default function ProductsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
+  const [editingQuantity, setEditingQuantity] = useState<{ productId: string; value: string } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -101,6 +102,59 @@ export default function ProductsPage() {
       productStorage.delete(id);
       loadProducts();
     }
+  };
+
+  const handleQuantityClick = (product: Product) => {
+    setEditingQuantity({ productId: product.id, value: product.quantity.toString() });
+  };
+
+  const handleQuantityChange = (value: string) => {
+    // Permitir apenas números
+    if (value === '' || /^\d+$/.test(value)) {
+      setEditingQuantity(prev => prev ? { ...prev, value } : null);
+    }
+  };
+
+  const handleQuantityBlur = () => {
+    if (editingQuantity) {
+      const newQuantity = parseInt(editingQuantity.value) || 0;
+      
+      if (newQuantity < 0) {
+        alert('A quantidade não pode ser negativa!');
+        setEditingQuantity(null);
+        return;
+      }
+
+      productStorage.update(editingQuantity.productId, { quantity: newQuantity });
+      loadProducts();
+      setEditingQuantity(null);
+    }
+  };
+
+  const handleQuantityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleQuantityBlur();
+    } else if (e.key === 'Escape') {
+      setEditingQuantity(null);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const currentValue = parseInt(editingQuantity?.value || '0');
+      setEditingQuantity(prev => prev ? { ...prev, value: (currentValue + 1).toString() } : null);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const currentValue = parseInt(editingQuantity?.value || '0');
+      const newValue = Math.max(0, currentValue - 1);
+      setEditingQuantity(prev => prev ? { ...prev, value: newValue.toString() } : null);
+    }
+  };
+
+  const adjustQuantity = (productId: string, adjustment: number) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    const newQuantity = Math.max(0, product.quantity + adjustment);
+    productStorage.update(productId, { quantity: newQuantity });
+    loadProducts();
   };
 
   const resetForm = () => {
@@ -198,7 +252,50 @@ export default function ProductsPage() {
                     <span className="text-sm font-semibold text-gray-900">R$ {product.price.toFixed(2)}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{product.quantity} un.</span>
+                    {editingQuantity?.productId === product.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={editingQuantity.value}
+                          onChange={(e) => handleQuantityChange(e.target.value)}
+                          onBlur={handleQuantityBlur}
+                          onKeyDown={handleQuantityKeyDown}
+                          autoFocus
+                          className="w-20 px-2 py-1 text-sm border border-blue-500 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                        <span className="text-sm text-gray-500">un.</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 group">
+                        <button
+                          onClick={() => adjustQuantity(product.id, -1)}
+                          disabled={product.quantity === 0}
+                          className="p-1 rounded hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Diminuir quantidade"
+                        >
+                          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleQuantityClick(product)}
+                          className="min-w-[60px] px-3 py-1 text-sm text-gray-900 hover:bg-blue-50 hover:text-blue-700 rounded border border-transparent hover:border-blue-300 transition-colors"
+                          title="Clicar para editar"
+                        >
+                          {product.quantity} un.
+                        </button>
+                        <button
+                          onClick={() => adjustQuantity(product.id, 1)}
+                          className="p-1 rounded hover:bg-green-100 transition-colors"
+                          title="Aumentar quantidade"
+                        >
+                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {product.quantity === 0 ? (
