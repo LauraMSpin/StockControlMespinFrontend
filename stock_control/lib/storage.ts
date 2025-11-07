@@ -1,0 +1,187 @@
+// Sistema de armazenamento local usando localStorage
+import { Product, Customer, Sale, Order } from '@/types';
+
+// Função auxiliar para gerar IDs únicos
+export const generateId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+};
+
+// Storage para Produtos
+export const productStorage = {
+  getAll: (): Product[] => {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem('products');
+    return data ? JSON.parse(data) : [];
+  },
+  
+  save: (products: Product[]) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('products', JSON.stringify(products));
+  },
+  
+  add: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const products = productStorage.getAll();
+    const newProduct: Product = {
+      ...product,
+      id: generateId(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    products.push(newProduct);
+    productStorage.save(products);
+    return newProduct;
+  },
+  
+  update: (id: string, updates: Partial<Product>) => {
+    const products = productStorage.getAll();
+    const index = products.findIndex(p => p.id === id);
+    if (index !== -1) {
+      products[index] = { ...products[index], ...updates, updatedAt: new Date() };
+      productStorage.save(products);
+      return products[index];
+    }
+    return null;
+  },
+  
+  delete: (id: string) => {
+    const products = productStorage.getAll();
+    const filtered = products.filter(p => p.id !== id);
+    productStorage.save(filtered);
+  },
+  
+  getById: (id: string): Product | undefined => {
+    const products = productStorage.getAll();
+    return products.find(p => p.id === id);
+  }
+};
+
+// Storage para Clientes
+export const customerStorage = {
+  getAll: (): Customer[] => {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem('customers');
+    return data ? JSON.parse(data) : [];
+  },
+  
+  save: (customers: Customer[]) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('customers', JSON.stringify(customers));
+  },
+  
+  add: (customer: Omit<Customer, 'id' | 'createdAt'>) => {
+    const customers = customerStorage.getAll();
+    const newCustomer: Customer = {
+      ...customer,
+      id: generateId(),
+      createdAt: new Date(),
+    };
+    customers.push(newCustomer);
+    customerStorage.save(customers);
+    return newCustomer;
+  },
+  
+  update: (id: string, updates: Partial<Customer>) => {
+    const customers = customerStorage.getAll();
+    const index = customers.findIndex(c => c.id === id);
+    if (index !== -1) {
+      customers[index] = { ...customers[index], ...updates };
+      customerStorage.save(customers);
+      return customers[index];
+    }
+    return null;
+  },
+  
+  delete: (id: string) => {
+    const customers = customerStorage.getAll();
+    const filtered = customers.filter(c => c.id !== id);
+    customerStorage.save(filtered);
+  },
+  
+  getById: (id: string): Customer | undefined => {
+    const customers = customerStorage.getAll();
+    return customers.find(c => c.id === id);
+  }
+};
+
+// Storage para Vendas
+export const saleStorage = {
+  getAll: (): Sale[] => {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem('sales');
+    return data ? JSON.parse(data) : [];
+  },
+  
+  save: (sales: Sale[]) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('sales', JSON.stringify(sales));
+  },
+  
+  add: (sale: Omit<Sale, 'id'>) => {
+    const sales = saleStorage.getAll();
+    const newSale: Sale = {
+      ...sale,
+      id: generateId(),
+    };
+    sales.push(newSale);
+    saleStorage.save(sales);
+    
+    // Atualizar estoque
+    sale.items.forEach(item => {
+      const product = productStorage.getById(item.productId);
+      if (product) {
+        productStorage.update(item.productId, {
+          quantity: product.quantity - item.quantity
+        });
+      }
+    });
+    
+    return newSale;
+  },
+  
+  getById: (id: string): Sale | undefined => {
+    const sales = saleStorage.getAll();
+    return sales.find(s => s.id === id);
+  }
+};
+
+// Storage para Encomendas
+export const orderStorage = {
+  getAll: (): Order[] => {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem('orders');
+    return data ? JSON.parse(data) : [];
+  },
+  
+  save: (orders: Order[]) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('orders', JSON.stringify(orders));
+  },
+  
+  add: (order: Omit<Order, 'id'>) => {
+    const orders = orderStorage.getAll();
+    const newOrder: Order = {
+      ...order,
+      id: generateId(),
+    };
+    orders.push(newOrder);
+    orderStorage.save(orders);
+    return newOrder;
+  },
+  
+  update: (id: string, updates: Partial<Order>) => {
+    const orders = orderStorage.getAll();
+    const index = orders.findIndex(o => o.id === id);
+    if (index !== -1) {
+      orders[index] = { ...orders[index], ...updates };
+      orderStorage.save(orders);
+      return orders[index];
+    }
+    return null;
+  },
+  
+  delete: (id: string) => {
+    const orders = orderStorage.getAll();
+    const filtered = orders.filter(o => o.id !== id);
+    orderStorage.save(filtered);
+  }
+};
