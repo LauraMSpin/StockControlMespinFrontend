@@ -1,22 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  /* Cores principais da paleta */
-  --primary: #8B7355;        /* Marrom médio */
-  --primary-dark: #6B563E;   /* Marrom escuro */
-  --primary-light: #C4A582;  /* Bege claro */
+  /* Nova paleta de cores */
+  --primary: #22452B;        /* Verde escuro */
+  --primary-dark: #1A3521;   /* Verde muito escuro */
+  --primary-light: #5D663D;  /* Verde oliva */
   
-  --secondary: #4A5D4F;      /* Verde acinzentado */
-  --secondary-light: #A8B5A4; /* Verde claro */
+  --secondary: #AF6138;      /* Terracota/laranja queimado */
+  --secondary-dark: #814923; /* Marrom escuro */
   
-  --accent: #D4C4B0;         /* Bege/creme */
-  --accent-dark: #B8A894;    /* Bege escuro */
-  
-  --neutral: #E8E4DC;        /* Cinza claro/off-white */
-  --neutral-dark: #C8C4BC;   /* Cinza médio */
+  --accent: #B49959;         /* Dourado/mostarda */
   
   --background: #FAF8F5;     /* Fundo suave */
-  --foreground: #3D3530;     /* Texto escuro marrom */
+  --foreground: #2C1810;     /* Texto escuro */
 }
 
 body {

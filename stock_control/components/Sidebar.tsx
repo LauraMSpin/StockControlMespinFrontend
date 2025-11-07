@@ -25,8 +25,8 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col w-64 bg-[#3D3530] min-h-screen">
-      <div className="flex items-center justify-center h-24 shadow-md px-4 py-4 bg-[#2D2520]">
+    <div className="flex flex-col w-64 bg-[#22452B] min-h-screen">
+      <div className="flex items-center justify-center h-24 shadow-md px-4 py-4 bg-[#1A3521]">
         <Image 
           src="/logo.png" 
           alt="Logo Velas Aromáticas" 
@@ -46,8 +46,8 @@ export default function Sidebar() {
               href={item.href}
               className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 isActive
-                  ? 'bg-[#8B7355] text-white'
-                  : 'text-[#E8E4DC] hover:bg-[#6B563E] hover:text-white'
+                  ? 'bg-[#AF6138] text-white'
+                  : 'text-[#FAF8F5] hover:bg-[#5D663D] hover:text-white'
               }`}
             >
               <Icon className="w-5 h-5 mr-3" />
@@ -56,7 +56,7 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div className="px-4 py-4 text-xs text-[#B8A894] border-t border-[#6B563E]">
+      <div className="px-4 py-4 text-xs text-[#B49959] border-t border-[#5D663D]">
         Sistema de Controle de Estoque v1.0
       </div>
     </div>

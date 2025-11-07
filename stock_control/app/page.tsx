@@ -56,42 +56,42 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
             onClick={() => router.push('/products?openModal=true')}
-            className="flex items-center p-4 border-2 border-[#D4C4B0] rounded-lg hover:border-[#8B7355] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+            className="flex items-center p-4 border-2 border-[#B49959] rounded-lg hover:border-[#AF6138] hover:bg-[#FFF9F0] transition-colors cursor-pointer"
           >
-            <svg className="w-6 h-6 text-[#8B7355] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-[#AF6138] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            <span className="font-medium text-[#3D3530]">Adicionar Produto</span>
+            <span className="font-medium text-[#2C1810]">Adicionar Produto</span>
           </button>
           
           <button
             onClick={() => router.push('/customers?openModal=true')}
-            className="flex items-center p-4 border-2 border-[#D4C4B0] rounded-lg hover:border-[#4A5D4F] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+            className="flex items-center p-4 border-2 border-[#5D663D] rounded-lg hover:border-[#22452B] hover:bg-[#F5F7F3] transition-colors cursor-pointer"
           >
-            <svg className="w-6 h-6 text-[#4A5D4F] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-[#22452B] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            <span className="font-medium text-[#3D3530]">Novo Cliente</span>
+            <span className="font-medium text-[#2C1810]">Novo Cliente</span>
           </button>
           
           <button
             onClick={() => router.push('/sales?openModal=true')}
-            className="flex items-center p-4 border-2 border-[#D4C4B0] rounded-lg hover:border-[#C4A582] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+            className="flex items-center p-4 border-2 border-[#B49959] rounded-lg hover:border-[#814923] hover:bg-[#FFF9F0] transition-colors cursor-pointer"
           >
-            <svg className="w-6 h-6 text-[#C4A582] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-[#814923] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
-            <span className="font-medium text-[#3D3530]">Nova Venda</span>
+            <span className="font-medium text-[#2C1810]">Nova Venda</span>
           </button>
           
           <button
             onClick={() => router.push('/orders?openModal=true')}
-            className="flex items-center p-4 border-2 border-[#D4C4B0] rounded-lg hover:border-[#B8A894] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+            className="flex items-center p-4 border-2 border-[#AF6138] rounded-lg hover:border-[#814923] hover:bg-[#FFF5ED] transition-colors cursor-pointer"
           >
-            <svg className="w-6 h-6 text-[#B8A894] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-[#AF6138] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            <span className="font-medium text-[#3D3530]">Nova Encomenda</span>
+            <span className="font-medium text-[#2C1810]">Nova Encomenda</span>
           </button>
         </div>
       </div>
@@ -105,11 +105,11 @@ export default function Home() {
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-[#6B563E]">Total de Produtos</p>
-                  <p className="text-3xl font-bold text-[#3D3530] mt-2">{stats.totalProducts}</p>
+                  <p className="text-sm font-medium text-[#814923]">Total de Produtos</p>
+                  <p className="text-3xl font-bold text-[#2C1810] mt-2">{stats.totalProducts}</p>
                 </div>
-                <div className="p-3 bg-[#E8E4DC] rounded-full">
-                  <svg className="w-8 h-8 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-[#F5EFE7] rounded-full">
+                  <svg className="w-8 h-8 text-[#AF6138]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 </div>
@@ -120,11 +120,11 @@ export default function Home() {
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-[#6B563E]">Total de Clientes</p>
-                  <p className="text-3xl font-bold text-[#3D3530] mt-2">{stats.totalCustomers}</p>
+                  <p className="text-sm font-medium text-[#814923]">Total de Clientes</p>
+                  <p className="text-3xl font-bold text-[#2C1810] mt-2">{stats.totalCustomers}</p>
                 </div>
-                <div className="p-3 bg-[#E8E4DC] rounded-full">
-                  <svg className="w-8 h-8 text-[#4A5D4F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-[#EEF2E8] rounded-full">
+                  <svg className="w-8 h-8 text-[#22452B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
@@ -135,11 +135,11 @@ export default function Home() {
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-[#6B563E]">Total de Vendas</p>
-                  <p className="text-3xl font-bold text-[#3D3530] mt-2">{stats.totalSales}</p>
+                  <p className="text-sm font-medium text-[#814923]">Total de Vendas</p>
+                  <p className="text-3xl font-bold text-[#2C1810] mt-2">{stats.totalSales}</p>
                 </div>
-                <div className="p-3 bg-[#E8E4DC] rounded-full">
-                  <svg className="w-8 h-8 text-[#C4A582]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-[#FFF9F0] rounded-full">
+                  <svg className="w-8 h-8 text-[#B49959]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
@@ -150,11 +150,11 @@ export default function Home() {
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-[#6B563E]">Encomendas Pendentes</p>
-                  <p className="text-3xl font-bold text-[#3D3530] mt-2">{stats.pendingOrders}</p>
+                  <p className="text-sm font-medium text-[#814923]">Encomendas Pendentes</p>
+                  <p className="text-3xl font-bold text-[#2C1810] mt-2">{stats.pendingOrders}</p>
                 </div>
-                <div className="p-3 bg-[#E8E4DC] rounded-full">
-                  <svg className="w-8 h-8 text-[#B8A894]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-[#F5EFE7] rounded-full">
+                  <svg className="w-8 h-8 text-[#814923]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
@@ -162,16 +162,16 @@ export default function Home() {
             </div>
 
             {/* Card Receita Total - Ocupando 2 colunas */}
-            <div className="bg-white rounded-lg shadow-md p-6 md:col-span-2">
+            <div className="bg-gradient-to-br from-[#22452B] to-[#1A3521] rounded-lg shadow-md p-6 md:col-span-2 border-2 border-[#5D663D]">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-[#6B563E]">Receita Total</p>
-                  <p className="text-3xl font-bold text-[#4A5D4F] mt-2">
+                  <p className="text-sm font-medium text-[#B49959]">Receita Total</p>
+                  <p className="text-3xl font-bold text-white mt-2">
                     R$ {stats.totalRevenue.toFixed(2)}
                   </p>
                 </div>
-                <div className="p-3 bg-[#E8E4DC] rounded-full">
-                  <svg className="w-8 h-8 text-[#4A5D4F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-white/20 rounded-full">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
@@ -185,14 +185,14 @@ export default function Home() {
           {lowStockProducts.length > 0 ? (
             <div className="bg-white rounded-lg shadow-md p-6 h-full">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-2 bg-[#FFF9F0] rounded-lg">
+                  <svg className="w-6 h-6 text-[#AF6138]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Produtos com Estoque Baixo</h2>
-                  <p className="text-sm text-gray-600">Produtos com menos de {lowStockThreshold} unidades em estoque</p>
+                  <h2 className="text-xl font-bold text-[#2C1810]">Produtos com Estoque Baixo</h2>
+                  <p className="text-sm text-[#814923]">Produtos com menos de {lowStockThreshold} unidades em estoque</p>
                 </div>
               </div>
               
@@ -200,29 +200,29 @@ export default function Home() {
                 {lowStockProducts.map((product) => (
                   <div 
                     key={product.id} 
-                    className="flex items-center justify-between p-4 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors"
+                    className="flex items-center justify-between p-4 bg-[#FFF9F0] border border-[#B49959] rounded-lg hover:bg-[#FFEDD5] transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0">
-                        <div className="w-10 h-10 bg-orange-200 rounded-full flex items-center justify-center">
-                          <svg className="w-5 h-5 text-orange-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-10 h-10 bg-[#FFEDD5] rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-[#814923]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                           </svg>
                         </div>
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">{product.name}</p>
+                        <p className="font-semibold text-[#2C1810]">{product.name}</p>
                         {product.fragrance && (
-                          <p className="text-sm text-gray-600">Fragrância: {product.fragrance}</p>
+                          <p className="text-sm text-[#814923]">Fragrância: {product.fragrance}</p>
                         )}
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-orange-600">
+                      <p className="text-2xl font-bold text-[#AF6138]">
                         {product.quantity} {product.quantity === 1 ? 'unidade' : 'unidades'}
                       </p>
                       {product.quantity === 0 && (
-                        <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold text-red-700 bg-red-100 rounded-full">
+                        <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold text-[#AF6138] bg-[#FFEDD5] border border-[#AF6138] rounded-full">
                           SEM ESTOQUE
                         </span>
                       )}
@@ -232,15 +232,15 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow-md p-6 h-full flex items-center justify-center">
+            <div className="bg-white rounded-lg shadow-md p-6 h-full flex items-center justify-center border-2 border-[#22452B]">
               <div className="text-center">
-                <div className="p-3 bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-[#EEF2E8] rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-[#22452B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Estoque em Boa Situação</h3>
-                <p className="text-gray-600">Todos os produtos têm estoque adequado</p>
+                <h3 className="text-lg font-semibold text-[#22452B] mb-2">Estoque em Boa Situação</h3>
+                <p className="text-[#5D663D]">Todos os produtos têm estoque adequado</p>
               </div>
             </div>
           )}

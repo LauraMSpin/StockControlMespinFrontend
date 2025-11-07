@@ -119,7 +119,7 @@ export default function CustomersPage() {
             resetForm();
             setShowModal(true);
           }}
-          className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+          className="bg-[#22452B] text-white px-6 py-3 rounded-lg hover:bg-[#5D663D] transition-colors flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -130,14 +130,14 @@ export default function CustomersPage() {
 
       {customers.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-16 h-16 text-[#B49959] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhum cliente cadastrado</h3>
-          <p className="text-gray-600 mb-4">Comece adicionando seu primeiro cliente</p>
+          <h3 className="text-xl font-semibold text-[#2C1810] mb-2">Nenhum cliente cadastrado</h3>
+          <p className="text-[#814923] mb-4">Comece adicionando seu primeiro cliente</p>
           <button
             onClick={() => setShowModal(true)}
-            className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            className="bg-[#22452B] text-white px-6 py-2 rounded-lg hover:bg-[#5D663D] transition-colors"
           >
             Adicionar Cliente
           </button>
@@ -148,8 +148,8 @@ export default function CustomersPage() {
             <div key={customer.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 bg-[#EEF2E8] rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-[#22452B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
@@ -190,13 +190,13 @@ export default function CustomersPage() {
               <div className="flex gap-2 pt-4 border-t border-gray-200">
                 <button
                   onClick={() => handleEdit(customer)}
-                  className="flex-1 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                  className="flex-1 bg-[#EEF2E8] text-[#5D663D] px-4 py-2 rounded-lg hover:bg-[#22452B] hover:text-white transition-colors text-sm font-medium"
                 >
                   Editar
                 </button>
                 <button
                   onClick={() => handleDelete(customer.id)}
-                  className="flex-1 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
+                  className="flex-1 bg-[#FFEDD5] text-[#AF6138] px-4 py-2 rounded-lg hover:bg-[#AF6138] hover:text-white transition-colors text-sm font-medium"
                 >
                   Excluir
                 </button>
@@ -301,13 +301,13 @@ export default function CustomersPage() {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-6 py-2 border border-[#814923] rounded-lg text-[#814923] hover:bg-[#F5EFE7] transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="px-6 py-2 bg-[#22452B] text-white rounded-lg hover:bg-[#5D663D] transition-colors"
                 >
                   {editingCustomer ? 'Atualizar' : 'Adicionar'}
                 </button>
