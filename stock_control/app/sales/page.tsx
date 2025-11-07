@@ -16,6 +16,7 @@ export default function SalesPage() {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [notes, setNotes] = useState('');
+  const [discountPercentage, setDiscountPercentage] = useState('0');
   const [saleStatus, setSaleStatus] = useState<'pending' | 'awaiting_payment' | 'paid' | 'cancelled'>('pending');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pix' | 'debit' | 'credit' | ''>('');
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
@@ -81,8 +82,18 @@ export default function SalesPage() {
     setSaleItems(saleItems.filter(item => item.productId !== productId));
   };
 
-  const calculateTotal = () => {
+  const calculateSubtotal = () => {
     return saleItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  };
+
+  const calculateDiscount = () => {
+    const discount = parseFloat(discountPercentage) || 0;
+    if (discount < 0 || discount > 100) return 0;
+    return (calculateSubtotal() * discount) / 100;
+  };
+
+  const calculateTotal = () => {
+    return calculateSubtotal() - calculateDiscount();
   };
 
   const handleSubmitSale = () => {
@@ -97,14 +108,28 @@ export default function SalesPage() {
       return;
     }
 
+    // Validar desconto
+    const discount = parseFloat(discountPercentage) || 0;
+    if (discount < 0 || discount > 100) {
+      alert('O desconto deve estar entre 0% e 100%!');
+      return;
+    }
+
     const customer = customers.find(c => c.id === selectedCustomer);
     if (!customer) return;
+
+    const subtotal = calculateSubtotal();
+    const discountAmount = calculateDiscount();
+    const total = calculateTotal();
 
     const newSale: Omit<Sale, 'id'> = {
       customerId: customer.id,
       customerName: customer.name,
       items: saleItems,
-      totalAmount: calculateTotal(),
+      subtotal: subtotal,
+      discountPercentage: discount,
+      discountAmount: discountAmount,
+      totalAmount: total,
       saleDate: new Date(),
       status: saleStatus,
       paymentMethod: saleStatus === 'paid' ? paymentMethod as 'cash' | 'pix' | 'debit' | 'credit' : undefined,
@@ -133,6 +158,7 @@ export default function SalesPage() {
     setSelectedProduct('');
     setQuantity('1');
     setNotes('');
+    setDiscountPercentage('0');
     setSaleStatus('pending');
     setPaymentMethod('');
   };
@@ -327,8 +353,16 @@ export default function SalesPage() {
           </tbody>
         </table>
 
-        <div class="total">
-          Total: R$ ${sale.totalAmount.toFixed(2)}
+        <div style="text-align: right; margin-top: 20px;">
+          ${sale.discountPercentage > 0 ? `
+            <p style="margin: 5px 0;">Subtotal: R$ ${sale.subtotal.toFixed(2)}</p>
+            <p style="margin: 5px 0; color: #dc2626;">Desconto (${sale.discountPercentage}%): - R$ ${sale.discountAmount.toFixed(2)}</p>
+            <p style="font-size: 1.2em; font-weight: bold; margin: 10px 0; padding-top: 10px; border-top: 2px solid #333;">
+              Total: R$ ${sale.totalAmount.toFixed(2)}
+            </p>
+          ` : `
+            <p class="total">Total: R$ ${sale.totalAmount.toFixed(2)}</p>
+          `}
         </div>
 
         ${sale.notes ? `<p><strong>Observações:</strong> ${sale.notes}</p>` : ''}
@@ -497,9 +531,16 @@ export default function SalesPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-semibold text-green-600">
-                      R$ {sale.totalAmount.toFixed(2)}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-semibold text-green-600">
+                        R$ {sale.totalAmount.toFixed(2)}
+                      </span>
+                      {sale.discountPercentage > 0 && (
+                        <span className="text-xs text-gray-500">
+                          {sale.discountPercentage}% off
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {editingStatus?.saleId === sale.id ? (
@@ -665,6 +706,45 @@ export default function SalesPage() {
               </div>
             )}
 
+            {/* Desconto */}
+            {saleItems.length > 0 && (
+              <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Desconto (%)
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={discountPercentage}
+                    onChange={(e) => setDiscountPercentage(e.target.value)}
+                    className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0"
+                  />
+                  <span className="text-sm text-gray-600">%</span>
+                </div>
+                
+                {parseFloat(discountPercentage) > 0 && (
+                  <div className="mt-3 pt-3 border-t border-blue-200 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span className="font-medium text-gray-900">R$ {calculateSubtotal().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Desconto ({discountPercentage}%):</span>
+                      <span className="font-medium text-red-600">- R$ {calculateDiscount().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-blue-200">
+                      <span className="text-gray-900 font-semibold">Total com desconto:</span>
+                      <span className="font-bold text-green-600 text-lg">R$ {calculateTotal().toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Observações */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -805,9 +885,23 @@ export default function SalesPage() {
             </table>
 
             <div className="text-right mb-4">
-              <span className="text-xl font-bold text-gray-900">
-                Total: R$ {viewingSale.totalAmount.toFixed(2)}
-              </span>
+              {viewingSale.discountPercentage > 0 ? (
+                <div className="space-y-1">
+                  <div className="text-sm text-gray-600">
+                    Subtotal: R$ {viewingSale.subtotal.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-red-600">
+                    Desconto ({viewingSale.discountPercentage}%): - R$ {viewingSale.discountAmount.toFixed(2)}
+                  </div>
+                  <div className="text-xl font-bold text-gray-900 pt-2 border-t border-gray-200">
+                    Total: R$ {viewingSale.totalAmount.toFixed(2)}
+                  </div>
+                </div>
+              ) : (
+                <span className="text-xl font-bold text-gray-900">
+                  Total: R$ {viewingSale.totalAmount.toFixed(2)}
+                </span>
+              )}
             </div>
 
             {viewingSale.notes && (

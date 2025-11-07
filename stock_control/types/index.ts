@@ -37,7 +37,10 @@ export interface Sale {
   customerId: string;
   customerName: string;
   items: SaleItem[];
-  totalAmount: number;
+  subtotal: number; // Valor antes do desconto
+  discountPercentage: number; // Desconto em percentual (0-100)
+  discountAmount: number; // Valor do desconto em reais
+  totalAmount: number; // Valor final após desconto
   saleDate: Date;
   status: 'pending' | 'awaiting_payment' | 'paid' | 'cancelled';
   paymentMethod?: 'cash' | 'pix' | 'debit' | 'credit';

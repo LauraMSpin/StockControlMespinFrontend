@@ -108,7 +108,15 @@ export const saleStorage = {
   getAll: (): Sale[] => {
     if (typeof window === 'undefined') return [];
     const data = localStorage.getItem('sales');
-    return data ? JSON.parse(data) : [];
+    const sales = data ? JSON.parse(data) : [];
+    
+    // Adicionar campos padrão para vendas antigas
+    return sales.map((sale: any) => ({
+      ...sale,
+      subtotal: sale.subtotal ?? sale.totalAmount,
+      discountPercentage: sale.discountPercentage ?? 0,
+      discountAmount: sale.discountAmount ?? 0,
+    }));
   },
   
   save: (sales: Sale[]) => {
@@ -247,6 +255,8 @@ export const orderStorage = {
       
       // Se o status mudou para "delivered", converter em venda (SEM descontar estoque)
       if (oldOrder.status !== 'delivered' && updates.status === 'delivered') {
+        const totalAmount = newOrder.totalAmount;
+        
         // Criar venda automaticamente com status "paid" e flag fromOrder
         saleStorage.add({
           customerId: newOrder.customerId,
@@ -258,7 +268,10 @@ export const orderStorage = {
             unitPrice: newOrder.unitPrice,
             totalPrice: newOrder.totalAmount
           }],
-          totalAmount: newOrder.totalAmount,
+          subtotal: totalAmount,
+          discountPercentage: 0,
+          discountAmount: 0,
+          totalAmount: totalAmount,
           saleDate: new Date(),
           status: 'paid',
           fromOrder: true, // Flag para não descontar do estoque
