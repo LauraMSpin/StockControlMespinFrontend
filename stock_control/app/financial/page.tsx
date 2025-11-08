@@ -181,8 +181,38 @@ export default function FinancialPage() {
   };
 
   const toggleInstallmentPaid = (id: string, index: number) => {
-    installmentStorage.markInstallmentAsPaid(id, index);
-    loadData();
+    const installment = installments.find(i => i.id === id);
+    if (!installment) return;
+
+    const currentValue = installment.paid[index];
+    
+    if (!currentValue) {
+      // Tentando marcar como pago - verificar se todas anteriores estão pagas
+      for (let i = 0; i < index; i++) {
+        if (!installment.paid[i]) {
+          alert('⚠️ Você deve pagar as parcelas na ordem sequencial.\n\nMarque primeiro a parcela ' + (i + 1) + '.');
+          return;
+        }
+      }
+    } else {
+      // Tentando desmarcar - verificar se é a última paga
+      let lastPaidIndex = -1;
+      for (let i = 0; i < installment.paid.length; i++) {
+        if (installment.paid[i]) {
+          lastPaidIndex = i;
+        }
+      }
+      
+      if (index !== lastPaidIndex) {
+        alert('⚠️ Você só pode desmarcar a última parcela paga.\n\nDesmarque primeiro a parcela ' + (lastPaidIndex + 1) + '.');
+        return;
+      }
+    }
+
+    const result = installmentStorage.markInstallmentAsPaid(id, index);
+    if (result) {
+      loadData();
+    }
   };
 
   // Cálculos financeiros do mês selecionado
@@ -453,20 +483,45 @@ export default function FinancialPage() {
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-1 mb-2">
-                      {installment.paid.map((paid, index) => (
-                        <button
-                          key={index}
-                          onClick={() => toggleInstallmentPaid(installment.id, index)}
-                          className={`px-2 py-1 text-xs rounded ${
-                            paid 
-                              ? 'bg-[#22452B] text-white' 
-                              : 'bg-[#FFF9F0] text-[#814923] hover:bg-[#B49959] hover:text-white'
-                          }`}
-                          title={paid ? 'Paga' : 'Marcar como paga'}
-                        >
-                          {index + 1}
-                        </button>
-                      ))}
+                      {installment.paid.map((paid, index) => {
+                        // Verifica se pode marcar (todas anteriores estão pagas)
+                        const canMark = !paid && (index === 0 || installment.paid.slice(0, index).every(p => p));
+                        
+                        // Verifica se pode desmarcar (é a última paga)
+                        const lastPaidIndex = installment.paid.map((p, i) => p ? i : -1).filter(i => i >= 0).pop();
+                        const canUnmark = paid && (lastPaidIndex === index);
+                        
+                        // Determina se está habilitado
+                        const isEnabled = canMark || canUnmark;
+                        
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => toggleInstallmentPaid(installment.id, index)}
+                            disabled={!isEnabled}
+                            className={`px-2 py-1 text-xs rounded transition-all ${
+                              paid 
+                                ? canUnmark
+                                  ? 'bg-[#22452B] text-white hover:bg-[#AF6138] cursor-pointer'
+                                  : 'bg-[#22452B] text-white opacity-60 cursor-not-allowed'
+                                : canMark
+                                  ? 'bg-[#FFF9F0] text-[#814923] hover:bg-[#B49959] hover:text-white cursor-pointer'
+                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                            }`}
+                            title={
+                              paid 
+                                ? canUnmark 
+                                  ? 'Clique para desmarcar' 
+                                  : 'Desmarque as parcelas anteriores primeiro'
+                                : canMark
+                                  ? 'Clique para marcar como paga'
+                                  : 'Marque as parcelas anteriores primeiro'
+                            }
+                          >
+                            {index + 1}
+                          </button>
+                        );
+                      })}
                     </div>
                     <button
                       onClick={() => handleDeleteInstallment(installment.id)}

@@ -13,6 +13,9 @@ export default function OrdersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [orderToComplete, setOrderToComplete] = useState<Order | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'pix' | 'debit' | 'credit'>('pix');
   const [formData, setFormData] = useState({
     customerId: '',
     productId: '',
@@ -123,6 +126,46 @@ export default function OrdersPage() {
     if (confirm('Tem certeza que deseja excluir esta encomenda?')) {
       orderStorage.delete(id);
       loadData();
+    }
+  };
+
+  const handleQuickComplete = (order: Order) => {
+    setOrderToComplete(order);
+    setSelectedPaymentMethod('pix');
+    setShowPaymentModal(true);
+  };
+
+  const confirmQuickComplete = () => {
+    if (!orderToComplete) return;
+
+    try {
+      orderStorage.update(orderToComplete.id, {
+        status: 'delivered' as const,
+        paymentMethod: selectedPaymentMethod,
+      });
+      alert('✅ Encomenda concluída! Uma venda foi criada automaticamente no histórico de vendas.');
+      setShowPaymentModal(false);
+      setOrderToComplete(null);
+      loadData();
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao concluir encomenda: ${error.message}`);
+        loadData();
+      }
+    }
+  };
+
+  const handleQuickConfirm = (order: Order) => {
+    try {
+      orderStorage.update(order.id, {
+        status: 'confirmed' as const,
+      });
+      loadData();
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao confirmar encomenda: ${error.message}`);
+        loadData();
+      }
     }
   };
 
@@ -320,19 +363,43 @@ export default function OrdersPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(order.status)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(order)}
-                      className="text-blue-600 hover:text-blue-900 mr-4"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(order.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Excluir
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <div className="flex justify-end gap-2">
+                      {/* Botão de conclusão rápida - apenas para pending e confirmed */}
+                      {(order.status === 'pending' || order.status === 'confirmed') && (
+                        <button
+                          onClick={() => handleQuickComplete(order)}
+                          className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors font-medium"
+                          title="Marcar como entregue e pago"
+                        >
+                          ✓ Concluir
+                        </button>
+                      )}
+                      
+                      {/* Botão de confirmar - apenas para pending */}
+                      {order.status === 'pending' && (
+                        <button
+                          onClick={() => handleQuickConfirm(order)}
+                          className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors font-medium"
+                          title="Confirmar encomenda"
+                        >
+                          Confirmar
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={() => handleEdit(order)}
+                        className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 transition-colors font-medium"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(order.id)}
+                        className="px-3 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-colors font-medium"
+                      >
+                        Excluir
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -500,6 +567,92 @@ export default function OrdersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Forma de Pagamento */}
+      {showPaymentModal && orderToComplete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Forma de Pagamento
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Encomenda de <strong>{orderToComplete.customerName}</strong>
+              <br />
+              Produto: <strong>{orderToComplete.productName}</strong>
+              <br />
+              Valor: <strong className="text-green-600">R$ {orderToComplete.totalAmount.toFixed(2)}</strong>
+            </p>
+
+            <div className="space-y-3 mb-6">
+              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="cash"
+                  checked={selectedPaymentMethod === 'cash'}
+                  onChange={(e) => setSelectedPaymentMethod(e.target.value as any)}
+                  className="w-4 h-4 text-[#22452B] focus:ring-[#22452B]"
+                />
+                <span className="ml-3 text-lg">💵 Dinheiro</span>
+              </label>
+
+              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="pix"
+                  checked={selectedPaymentMethod === 'pix'}
+                  onChange={(e) => setSelectedPaymentMethod(e.target.value as any)}
+                  className="w-4 h-4 text-[#22452B] focus:ring-[#22452B]"
+                />
+                <span className="ml-3 text-lg">📱 PIX</span>
+              </label>
+
+              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="debit"
+                  checked={selectedPaymentMethod === 'debit'}
+                  onChange={(e) => setSelectedPaymentMethod(e.target.value as any)}
+                  className="w-4 h-4 text-[#22452B] focus:ring-[#22452B]"
+                />
+                <span className="ml-3 text-lg">💳 Cartão de Débito</span>
+              </label>
+
+              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="credit"
+                  checked={selectedPaymentMethod === 'credit'}
+                  onChange={(e) => setSelectedPaymentMethod(e.target.value as any)}
+                  className="w-4 h-4 text-[#22452B] focus:ring-[#22452B]"
+                />
+                <span className="ml-3 text-lg">💳 Cartão de Crédito</span>
+              </label>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setOrderToComplete(null);
+                }}
+                className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmQuickComplete}
+                className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+              >
+                ✓ Confirmar Pagamento
+              </button>
+            </div>
           </div>
         </div>
       )}

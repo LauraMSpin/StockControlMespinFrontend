@@ -312,6 +312,7 @@ export const orderStorage = {
           totalAmount: totalAmount,
           saleDate: new Date(),
           status: 'paid',
+          paymentMethod: newOrder.paymentMethod, // Usar método de pagamento da encomenda
           fromOrder: true, // Flag para não descontar do estoque
           notes: `Encomenda #${newOrder.id} - ${newOrder.notes || ''}`
         });
@@ -462,9 +463,41 @@ export const installmentStorage = {
     const installments = installmentStorage.getAll();
     const installment = installments.find(i => i.id === id);
     if (installment && installmentIndex < installment.paid.length) {
-      installment.paid[installmentIndex] = true;
-      installmentStorage.save(installments);
-      return installment;
+      const currentValue = installment.paid[installmentIndex];
+      
+      if (currentValue) {
+        // Se está marcado, permitir desmarcar apenas se for a última parcela paga sequencial
+        // Encontrar a última parcela paga
+        let lastPaidIndex = -1;
+        for (let i = 0; i < installment.paid.length; i++) {
+          if (installment.paid[i]) {
+            lastPaidIndex = i;
+          }
+        }
+        
+        // Só pode desmarcar se for a última paga
+        if (installmentIndex === lastPaidIndex) {
+          installment.paid[installmentIndex] = false;
+          installmentStorage.save(installments);
+          return installment;
+        }
+        // Se não for a última, não faz nada
+        return null;
+      } else {
+        // Se está desmarcado, verificar se pode marcar (deve ser sequencial)
+        // Verificar se todas as anteriores estão pagas
+        for (let i = 0; i < installmentIndex; i++) {
+          if (!installment.paid[i]) {
+            // Tem parcela anterior não paga, não pode marcar
+            return null;
+          }
+        }
+        
+        // Todas anteriores estão pagas, pode marcar
+        installment.paid[installmentIndex] = true;
+        installmentStorage.save(installments);
+        return installment;
+      }
     }
     return null;
   }

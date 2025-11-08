@@ -96,6 +96,7 @@ export interface Order {
   orderDate: Date;
   expectedDeliveryDate: Date;
   status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+  paymentMethod?: 'cash' | 'pix' | 'debit' | 'credit';
   notes?: string;
 }
 
