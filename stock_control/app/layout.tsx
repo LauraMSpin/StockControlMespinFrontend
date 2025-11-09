@@ -20,7 +20,7 @@ export default function RootLayout({
       <body className="antialiased">
         <div className="flex h-screen bg-[#FAF8F5]">
           <Sidebar />
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 overflow-y-auto ml-64">
             {children}
           </main>
         </div>

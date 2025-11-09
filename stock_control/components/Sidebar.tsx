@@ -35,8 +35,8 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col w-64 bg-[#22452B] min-h-screen">
-      <div className="flex items-center justify-center h-24 shadow-md px-4 py-4 bg-[#1A3521]">
+    <div className="flex flex-col w-64 bg-[#22452B] h-screen fixed overflow-y-auto">
+      <div className="flex items-center justify-center h-24 shadow-md px-4 py-4 bg-[#1A3521] flex-shrink-0 sticky top-0 z-10">
         <Image 
           src="/logo.png" 
           alt="Logo Velas Aromáticas" 
@@ -66,7 +66,7 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div className="px-4 py-4 text-xs text-[#B49959] border-t border-[#5D663D]">
+      <div className="px-4 py-4 text-xs text-[#B49959] border-t border-[#5D663D] flex-shrink-0 sticky bottom-0 bg-[#22452B]">
         Sistema de Controle de Estoque v1.0
       </div>
     </div>
