@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Product } from '@/types';
-import { productStorage, customerStorage, saleStorage, orderStorage, settingsStorage } from '@/lib/storage';
+import { Product, Material } from '@/types';
+import { productStorage, customerStorage, saleStorage, orderStorage, settingsStorage, materialStorage } from '@/lib/storage';
 
 export default function Home() {
   const router = useRouter();
@@ -15,6 +15,7 @@ export default function Home() {
     totalRevenue: 0,
   });
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
+  const [lowStockMaterials, setLowStockMaterials] = useState<Material[]>([]);
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
 
   useEffect(() => {
@@ -25,8 +26,13 @@ export default function Home() {
     const customers = customerStorage.getAll();
     const sales = saleStorage.getAll();
     const orders = orderStorage.getAll();
+    const materials = materialStorage.getAll();
 
     const lowStock = products.filter(p => p.quantity < settings.lowStockThreshold);
+    const lowMaterials = materials.filter(m => {
+      const stock = m.currentStock ?? m.totalQuantityPurchased;
+      return stock < 100 || stock === 0;
+    });
     const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
     // Calcular receita apenas das vendas com status "paid"
     const revenue = sales
@@ -41,6 +47,7 @@ export default function Home() {
       totalRevenue: revenue,
     });
     setLowStockProducts(lowStock);
+    setLowStockMaterials(lowMaterials);
   }, []);
 
   return (
@@ -246,6 +253,73 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      {/* Painel de Alertas de Materiais */}
+      {lowStockMaterials.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-red-50 rounded-lg">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">⚠️ Materiais com Estoque Baixo</h2>
+              <p className="text-sm text-gray-600">Materiais que precisam ser repostos</p>
+            </div>
+            <button
+              onClick={() => router.push('/materials')}
+              className="ml-auto px-4 py-2 bg-[#22452B] text-white rounded-lg hover:bg-[#2C5A38] transition-colors text-sm font-medium"
+            >
+              Ver Todos os Materiais
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {lowStockMaterials.map((material) => {
+              const currentStock = material.currentStock ?? material.totalQuantityPurchased;
+              const status = currentStock === 0 
+                ? { text: 'SEM ESTOQUE', color: 'bg-red-100 border-red-500 text-red-800' }
+                : { text: 'ESTOQUE BAIXO', color: 'bg-yellow-100 border-yellow-500 text-yellow-800' };
+
+              return (
+                <div 
+                  key={material.id} 
+                  className={`p-4 border-2 rounded-lg ${status.color} hover:shadow-lg transition-all cursor-pointer`}
+                  onClick={() => router.push('/materials')}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">{material.name}</h3>
+                      {material.category && (
+                        <span className="text-xs px-2 py-0.5 bg-white rounded-full">
+                          {material.category}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-3">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-sm text-gray-600">Estoque:</span>
+                      <span className="text-2xl font-bold text-gray-900">
+                        {currentStock}
+                        <span className="text-sm ml-1">{material.unit}</span>
+                      </span>
+                    </div>
+                    
+                    <div className="mt-2 pt-2 border-t border-gray-300">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${status.color}`}>
+                        {status.text}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
     </div>
   );

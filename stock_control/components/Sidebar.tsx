@@ -13,12 +13,14 @@ import {
   CurrencyDollarIcon,
   BeakerIcon,
   TagIcon,
+  CubeIcon,
   Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'Produtos', href: '/products', icon: ShoppingBagIcon },
+  { name: 'Materiais', href: '/materials', icon: CubeIcon },
   { name: 'Preços por Categoria', href: '/category-prices', icon: TagIcon },
   { name: 'Custos de Produção', href: '/production-costs', icon: BeakerIcon },
   { name: 'Clientes', href: '/customers', icon: UsersIcon },

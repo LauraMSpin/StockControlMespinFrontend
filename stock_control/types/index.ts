@@ -5,7 +5,8 @@ export interface Material {
   id: string;
   name: string;
   unit: string; // g, ml, unidade, etc
-  totalQuantityPurchased: number; // Quantidade total comprada
+  totalQuantityPurchased: number; // Quantidade total comprada (para cálculo do custo)
+  currentStock: number; // Estoque atual disponível
   totalCostPaid: number; // Custo total pago
   costPerUnit: number; // Custo por unidade (calculado)
   category?: string; // cera, essência, embalagem, etc
