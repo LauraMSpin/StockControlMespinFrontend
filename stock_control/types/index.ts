@@ -95,7 +95,8 @@ export interface Order {
   totalAmount: number;
   orderDate: Date;
   expectedDeliveryDate: Date;
-  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+  deliveredDate?: Date; // Data real da entrega
+  status: 'pending' | 'in_production' | 'ready_for_delivery' | 'delivered' | 'cancelled';
   paymentMethod?: 'cash' | 'pix' | 'debit' | 'credit';
   notes?: string;
 }
