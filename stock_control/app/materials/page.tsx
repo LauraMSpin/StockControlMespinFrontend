@@ -13,6 +13,7 @@ export default function MaterialsPage() {
     unit: 'g',
     totalQuantityPurchased: '0',
     currentStock: '0',
+    lowStockAlert: '100',
     totalCostPaid: '0',
     category: '',
     supplier: '',
@@ -32,6 +33,7 @@ export default function MaterialsPage() {
 
     const totalQuantityPurchased = parseFloat(formData.totalQuantityPurchased);
     const currentStock = parseFloat(formData.currentStock);
+    const lowStockAlert = parseFloat(formData.lowStockAlert);
     const totalCostPaid = parseFloat(formData.totalCostPaid);
     const costPerUnit = totalQuantityPurchased > 0 ? totalCostPaid / totalQuantityPurchased : 0;
 
@@ -41,6 +43,7 @@ export default function MaterialsPage() {
         unit: formData.unit,
         totalQuantityPurchased,
         currentStock,
+        lowStockAlert,
         totalCostPaid,
         costPerUnit,
         category: formData.category,
@@ -53,6 +56,7 @@ export default function MaterialsPage() {
         unit: formData.unit,
         totalQuantityPurchased,
         currentStock,
+        lowStockAlert,
         totalCostPaid,
         costPerUnit,
         category: formData.category,
@@ -73,6 +77,7 @@ export default function MaterialsPage() {
       unit: material.unit,
       totalQuantityPurchased: material.totalQuantityPurchased.toString(),
       currentStock: (material.currentStock || material.totalQuantityPurchased).toString(),
+      lowStockAlert: (material.lowStockAlert || 100).toString(),
       totalCostPaid: material.totalCostPaid.toString(),
       category: material.category || '',
       supplier: material.supplier || '',
@@ -94,6 +99,7 @@ export default function MaterialsPage() {
       unit: 'g',
       totalQuantityPurchased: '0',
       currentStock: '0',
+      lowStockAlert: '100',
       totalCostPaid: '0',
       category: '',
       supplier: '',
@@ -123,10 +129,10 @@ export default function MaterialsPage() {
     );
   };
 
-  const getStockStatus = (currentStock: number) => {
+  const getStockStatus = (currentStock: number, lowStockAlert: number) => {
     if (currentStock === 0) {
       return { text: 'Sem estoque', color: 'text-red-600', bg: 'bg-red-50' };
-    } else if (currentStock < 100) {
+    } else if (currentStock < lowStockAlert) {
       return { text: 'Estoque baixo', color: 'text-yellow-600', bg: 'bg-yellow-50' };
     }
     return { text: 'Estoque ok', color: 'text-green-600', bg: 'bg-green-50' };
@@ -176,7 +182,8 @@ export default function MaterialsPage() {
               <p className="text-2xl font-bold text-yellow-600">
                 {materials.filter(m => {
                   const stock = m.currentStock ?? m.totalQuantityPurchased;
-                  return stock > 0 && stock < 100;
+                  const alert = m.lowStockAlert || 100;
+                  return stock > 0 && stock < alert;
                 }).length}
               </p>
             </div>
@@ -269,7 +276,8 @@ export default function MaterialsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {materials.map((material) => {
                 const currentStock = material.currentStock ?? material.totalQuantityPurchased;
-                const status = getStockStatus(currentStock);
+                const lowStockAlert = material.lowStockAlert || 100;
+                const status = getStockStatus(currentStock, lowStockAlert);
                 return (
                   <tr key={material.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -421,6 +429,27 @@ export default function MaterialsPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#22452B] focus:border-transparent"
                   />
                   <p className="text-xs text-gray-500 mt-1">Quantidade disponível agora</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    Alerta de Estoque Baixo *
+                    <span className="text-xs text-gray-500 font-normal">({formData.unit})</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={formData.lowStockAlert}
+                    onChange={(e) => setFormData({ ...formData, lowStockAlert: e.target.value })}
+                    className="w-full px-4 py-2 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-yellow-50"
+                  />
+                  <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Será alertado quando estoque for menor que este valor
+                  </p>
                 </div>
 
                 <div className="md:col-span-2">

@@ -31,7 +31,8 @@ export default function Home() {
     const lowStock = products.filter(p => p.quantity < settings.lowStockThreshold);
     const lowMaterials = materials.filter(m => {
       const stock = m.currentStock ?? m.totalQuantityPurchased;
-      return stock < 100 || stock === 0;
+      const alert = m.lowStockAlert || 100;
+      return stock < alert || stock === 0;
     });
     const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
     // Calcular receita apenas das vendas com status "paid"
@@ -278,9 +279,10 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {lowStockMaterials.map((material) => {
               const currentStock = material.currentStock ?? material.totalQuantityPurchased;
+              const lowStockAlert = material.lowStockAlert || 100;
               const status = currentStock === 0 
                 ? { text: 'SEM ESTOQUE', color: 'bg-red-100 border-red-500 text-red-800' }
-                : { text: 'ESTOQUE BAIXO', color: 'bg-yellow-100 border-yellow-500 text-yellow-800' };
+                : { text: `ABAIXO DE ${lowStockAlert} ${material.unit}`, color: 'bg-yellow-100 border-yellow-500 text-yellow-800' };
 
               return (
                 <div 
