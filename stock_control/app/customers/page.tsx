@@ -17,6 +17,7 @@ export default function CustomersPage() {
     address: '',
     city: '',
     state: '',
+    birthDate: '',
   });
 
   useEffect(() => {
@@ -36,10 +37,15 @@ export default function CustomersPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    const customerData = {
+      ...formData,
+      birthDate: formData.birthDate ? new Date(formData.birthDate) : undefined,
+    };
+    
     if (editingCustomer) {
-      customerStorage.update(editingCustomer.id, formData);
+      customerStorage.update(editingCustomer.id, customerData);
     } else {
-      customerStorage.add(formData);
+      customerStorage.add(customerData);
     }
 
     resetForm();
@@ -49,6 +55,17 @@ export default function CustomersPage() {
 
   const handleEdit = (customer: Customer) => {
     setEditingCustomer(customer);
+    
+    // Formatar data para input type="date"
+    let birthDateStr = '';
+    if (customer.birthDate) {
+      const date = new Date(customer.birthDate);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      birthDateStr = `${year}-${month}-${day}`;
+    }
+    
     setFormData({
       name: customer.name,
       email: customer.email || '',
@@ -56,6 +73,7 @@ export default function CustomersPage() {
       address: customer.address || '',
       city: customer.city || '',
       state: customer.state || '',
+      birthDate: birthDateStr,
     });
     setShowModal(true);
   };
@@ -103,6 +121,7 @@ export default function CustomersPage() {
       address: '',
       city: '',
       state: '',
+      birthDate: '',
     });
     setEditingCustomer(null);
   };
@@ -174,6 +193,12 @@ export default function CustomersPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                     {customer.email}
+                  </div>
+                )}
+                {customer.birthDate && (
+                  <div className="flex items-center text-sm text-gray-600">
+                    <span className="mr-2">🎂</span>
+                    {new Date(customer.birthDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
                   </div>
                 )}
                 {customer.city && customer.state && (
@@ -252,6 +277,21 @@ export default function CustomersPage() {
                     placeholder="cliente@email.com"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Data de Aniversário 🎂
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.birthDate}
+                    onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Cliente receberá desconto automático em compras no mês de aniversário
+                  </p>
                 </div>
 
                 <div className="md:col-span-2">

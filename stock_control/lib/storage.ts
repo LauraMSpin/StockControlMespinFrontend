@@ -339,6 +339,7 @@ const DEFAULT_SETTINGS: Settings = {
   companyPhone: '',
   companyEmail: '',
   companyAddress: '',
+  birthdayDiscount: 0,
 };
 
 export const settingsStorage = {

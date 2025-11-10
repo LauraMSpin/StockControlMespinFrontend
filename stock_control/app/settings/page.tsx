@@ -11,6 +11,7 @@ export default function SettingsPage() {
     companyPhone: '',
     companyEmail: '',
     companyAddress: '',
+    birthdayDiscount: 0,
   });
   const [saved, setSaved] = useState(false);
 
@@ -74,6 +75,36 @@ export default function SettingsPage() {
                   Produtos com quantidade abaixo deste valor serão considerados com estoque baixo
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* Desconto de Aniversário */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-2xl">🎂</span>
+              Desconto de Aniversário
+            </h2>
+            
+            <div className="mb-4 bg-pink-50 border border-pink-200 rounded-lg p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Desconto Automático no Mês de Aniversário (%) *
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  required
+                  value={settings.birthdayDiscount}
+                  onChange={(e) => setSettings({ ...settings, birthdayDiscount: parseFloat(e.target.value) || 0 })}
+                  className="w-32 px-4 py-2 border border-pink-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                />
+                <span className="text-sm text-gray-600">%</span>
+              </div>
+              <p className="mt-2 text-xs text-pink-700">
+                Este desconto será aplicado automaticamente em todas as vendas de clientes durante o mês de aniversário deles. Configure 0 para desativar.
+              </p>
             </div>
           </div>
 

@@ -59,6 +59,7 @@ export interface Customer {
   address?: string;
   city?: string;
   state?: string;
+  birthDate?: Date; // Data de aniversário do cliente
   createdAt: Date;
 }
 
@@ -109,6 +110,7 @@ export interface Settings {
   companyPhone?: string;
   companyEmail?: string;
   companyAddress?: string;
+  birthdayDiscount: number; // Desconto de aniversário em percentual (0-100)
 }
 
 export interface CategoryPrice {

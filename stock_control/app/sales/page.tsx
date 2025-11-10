@@ -25,6 +25,7 @@ export default function SalesPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ saleId: string; newStatus: Sale['status'] } | null>(null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [isBirthdayDiscount, setIsBirthdayDiscount] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -39,6 +40,45 @@ export default function SalesPage() {
     setSales(saleStorage.getAll());
     setProducts(productStorage.getAll());
     setCustomers(customerStorage.getAll());
+  };
+
+  // Verificar se é mês de aniversário do cliente
+  const checkBirthdayMonth = (customerId: string) => {
+    const customer = customers.find(c => c.id === customerId);
+    if (!customer || !customer.birthDate) return false;
+
+    const today = new Date();
+    const birthDate = new Date(customer.birthDate);
+    
+    // Comparar apenas o mês
+    return today.getMonth() === birthDate.getMonth();
+  };
+
+  // Aplicar desconto de aniversário automaticamente
+  const applyBirthdayDiscount = (customerId: string) => {
+    const settings = settingsStorage.get();
+    
+    if (settings.birthdayDiscount > 0 && checkBirthdayMonth(customerId)) {
+      setDiscountPercentage(settings.birthdayDiscount.toString());
+      setIsBirthdayDiscount(true);
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Handler para mudança de cliente
+  const handleCustomerChange = (customerId: string) => {
+    setSelectedCustomer(customerId);
+    
+    // Se não estiver editando uma venda, aplicar desconto de aniversário
+    if (!editingSale) {
+      const hasDiscount = applyBirthdayDiscount(customerId);
+      if (!hasDiscount) {
+        setDiscountPercentage('0');
+        setIsBirthdayDiscount(false);
+      }
+    }
   };
 
   const addItemToSale = () => {
@@ -130,6 +170,15 @@ export default function SalesPage() {
     const discountAmount = calculateDiscount();
     const total = calculateTotal();
 
+    // Criar data com hora ao meio-dia para evitar problemas de fuso horário
+    let saleDateObj: Date;
+    if (saleDate) {
+      saleDateObj = new Date(saleDate + 'T12:00:00');
+    } else {
+      saleDateObj = new Date();
+      saleDateObj.setHours(12, 0, 0, 0);
+    }
+
     const newSale: Omit<Sale, 'id'> = {
       customerId: customer.id,
       customerName: customer.name,
@@ -138,7 +187,7 @@ export default function SalesPage() {
       discountPercentage: discount,
       discountAmount: discountAmount,
       totalAmount: total,
-      saleDate: saleDate ? new Date(saleDate) : new Date(),
+      saleDate: saleDateObj,
       status: saleStatus,
       paymentMethod: saleStatus === 'paid' ? paymentMethod as 'cash' | 'pix' | 'debit' | 'credit' : undefined,
       notes: notes
@@ -169,8 +218,17 @@ export default function SalesPage() {
     setDiscountPercentage('0');
     setSaleStatus('pending');
     setPaymentMethod('');
-    setSaleDate('');
+    
+    // Definir data atual como padrão (usando hora local para evitar problemas de fuso)
+    const today = new Date();
+    today.setHours(12, 0, 0, 0); // Meio-dia para evitar problemas de fuso
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    setSaleDate(`${year}-${month}-${day}`);
+    
     setEditingSale(null);
+    setIsBirthdayDiscount(false);
   };
 
   const handleEditSale = (sale: Sale) => {
@@ -188,14 +246,13 @@ export default function SalesPage() {
     setSaleStatus(sale.status);
     setPaymentMethod(sale.paymentMethod || '');
     
-    // Formatar data para o input type="datetime-local"
+    // Formatar data para o input type="date" (ajustando fuso horário)
     const date = new Date(sale.saleDate);
+    date.setHours(12, 0, 0, 0); // Meio-dia para evitar problemas de fuso
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    setSaleDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+    setSaleDate(`${year}-${month}-${day}`);
     
     setViewingSale(null);
     setShowModal(true);
@@ -229,6 +286,14 @@ export default function SalesPage() {
     const discountAmount = calculateDiscount();
     const total = calculateTotal();
 
+    // Criar data com hora ao meio-dia para evitar problemas de fuso horário
+    let saleDateObj: Date;
+    if (saleDate) {
+      saleDateObj = new Date(saleDate + 'T12:00:00');
+    } else {
+      saleDateObj = editingSale.saleDate;
+    }
+
     const updatedSale: Partial<Sale> = {
       customerId: customer.id,
       customerName: customer.name,
@@ -237,7 +302,7 @@ export default function SalesPage() {
       discountPercentage: discount,
       discountAmount: discountAmount,
       totalAmount: total,
-      saleDate: saleDate ? new Date(saleDate) : editingSale.saleDate,
+      saleDate: saleDateObj,
       status: saleStatus,
       paymentMethod: saleStatus === 'paid' ? paymentMethod as 'cash' | 'pix' | 'debit' | 'credit' : undefined,
       notes: notes
@@ -749,16 +814,32 @@ export default function SalesPage() {
               </label>
               <select
                 value={selectedCustomer}
-                onChange={(e) => setSelectedCustomer(e.target.value)}
+                onChange={(e) => handleCustomerChange(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">Selecione um cliente</option>
-                {customers.map(customer => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.name}
-                  </option>
-                ))}
+                {customers.map(customer => {
+                  const isBirthday = customer.birthDate && checkBirthdayMonth(customer.id);
+                  return (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name} {isBirthday ? '🎂' : ''}
+                    </option>
+                  );
+                })}
               </select>
+              {isBirthdayDiscount && (
+                <div className="mt-2 p-3 bg-pink-50 border border-pink-200 rounded-lg flex items-center gap-2">
+                  <span className="text-2xl">🎂</span>
+                  <div>
+                    <p className="text-sm font-semibold text-pink-800">
+                      Mês de aniversário do cliente!
+                    </p>
+                    <p className="text-xs text-pink-700">
+                      Desconto de {discountPercentage}% aplicado automaticamente
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Adicionar Produtos */}
@@ -884,9 +965,15 @@ export default function SalesPage() {
 
             {/* Desconto */}
             {saleItems.length > 0 && (
-              <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className={`mb-6 rounded-lg p-4 border ${isBirthdayDiscount ? 'bg-pink-50 border-pink-200' : 'bg-blue-50 border-blue-200'}`}>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  {isBirthdayDiscount && <span className="text-xl">🎂</span>}
                   Desconto (%)
+                  {isBirthdayDiscount && (
+                    <span className="text-xs font-normal text-pink-700 bg-pink-100 px-2 py-0.5 rounded-full">
+                      Aniversário
+                    </span>
+                  )}
                 </label>
                 <div className="flex items-center gap-4">
                   <input
@@ -895,15 +982,26 @@ export default function SalesPage() {
                     max="100"
                     step="0.01"
                     value={discountPercentage}
-                    onChange={(e) => setDiscountPercentage(e.target.value)}
+                    onChange={(e) => {
+                      setDiscountPercentage(e.target.value);
+                      // Se mudar manualmente, desativar flag de desconto automático
+                      if (isBirthdayDiscount) {
+                        setIsBirthdayDiscount(false);
+                      }
+                    }}
                     className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="0"
                   />
                   <span className="text-sm text-gray-600">%</span>
+                  {isBirthdayDiscount && (
+                    <span className="text-xs text-pink-700">
+                      (Desconto de aniversário aplicado)
+                    </span>
+                  )}
                 </div>
                 
                 {parseFloat(discountPercentage) > 0 && (
-                  <div className="mt-3 pt-3 border-t border-blue-200 space-y-1 text-sm">
+                  <div className={`mt-3 pt-3 space-y-1 text-sm border-t ${isBirthdayDiscount ? 'border-pink-200' : 'border-blue-200'}`}>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Subtotal:</span>
                       <span className="font-medium text-gray-900">R$ {calculateSubtotal().toFixed(2)}</span>
@@ -912,7 +1010,7 @@ export default function SalesPage() {
                       <span className="text-gray-600">Desconto ({discountPercentage}%):</span>
                       <span className="font-medium text-red-600">- R$ {calculateDiscount().toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between pt-2 border-t border-blue-200">
+                    <div className={`flex justify-between pt-2 border-t ${isBirthdayDiscount ? 'border-pink-200' : 'border-blue-200'}`}>
                       <span className="text-gray-900 font-semibold">Total com desconto:</span>
                       <span className="font-bold text-green-600 text-lg">R$ {calculateTotal().toFixed(2)}</span>
                     </div>
@@ -924,18 +1022,18 @@ export default function SalesPage() {
             {/* Data da Venda */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data e Hora da Venda
+                Data da Venda
               </label>
               <input
-                type="datetime-local"
+                type="date"
                 value={saleDate}
                 onChange={(e) => setSaleDate(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#22452B] focus:border-transparent"
               />
               <p className="mt-1 text-xs text-[#814923]">
                 {saleDate 
-                  ? `Data selecionada: ${new Date(saleDate).toLocaleString('pt-BR')}`
-                  : 'Se não selecionar, será usada a data/hora atual'
+                  ? `Data selecionada: ${new Date(saleDate + 'T12:00:00').toLocaleDateString('pt-BR')}`
+                  : 'Data atual será usada'
                 }
               </p>
             </div>
