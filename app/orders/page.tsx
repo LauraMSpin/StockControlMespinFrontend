@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Order, Product, Customer } from '@/types';
-import { orderStorage, productStorage, customerStorage } from '@/lib/storage';
+import { orderService, productService, customerService } from '@/services';
 import { migrateOrders } from '@/lib/migrations';
 
 export default function OrdersPage() {
@@ -11,6 +11,8 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -38,13 +40,27 @@ export default function OrdersPage() {
     }
   }, [searchParams]);
 
-  const loadData = () => {
-    setOrders(orderStorage.getAll());
-    setProducts(productStorage.getAll());
-    setCustomers(customerStorage.getAll());
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [ordersData, productsData, customersData] = await Promise.all([
+        orderService.getAll(),
+        productService.getAll(),
+        customerService.getAll(),
+      ]);
+      setOrders(ordersData);
+      setProducts(productsData);
+      setCustomers(customersData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
+      console.error('Error loading data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const customer = customers.find(c => c.id === formData.customerId);
@@ -59,59 +75,57 @@ export default function OrdersPage() {
     const unitPrice = product.price;
     const totalAmount = quantity * unitPrice;
 
-    if (editingOrder) {
-      const updates: any = {
-        customerId: formData.customerId,
-        customerName: customer.name,
-        productId: formData.productId,
-        productName: product.name,
-        quantity: quantity,
-        unitPrice: unitPrice,
-        totalAmount: totalAmount,
-        orderDate: new Date(formData.orderDate),
-        expectedDeliveryDate: new Date(formData.expectedDeliveryDate),
-        status: formData.status,
-        notes: formData.notes,
-      };
+    try {
+      if (editingOrder) {
+        const updates: any = {
+          customerId: formData.customerId,
+          customerName: customer.name,
+          productId: formData.productId,
+          productName: product.name,
+          quantity: quantity,
+          unitPrice: unitPrice,
+          totalAmount: totalAmount,
+          orderDate: new Date(formData.orderDate),
+          expectedDeliveryDate: new Date(formData.expectedDeliveryDate),
+          status: formData.status,
+          notes: formData.notes,
+        };
 
-      // Se está mudando para delivered e ainda não tem data de entrega, adicionar
-      if (editingOrder.status !== 'delivered' && formData.status === 'delivered' && !editingOrder.deliveredDate) {
-        updates.deliveredDate = new Date();
-      }
-      
-      try {
-        orderStorage.update(editingOrder.id, updates);
+        // Se está mudando para delivered e ainda não tem data de entrega, adicionar
+        if (editingOrder.status !== 'delivered' && formData.status === 'delivered' && !editingOrder.deliveredDate) {
+          updates.deliveredDate = new Date();
+        }
+        
+        await orderService.update(editingOrder.id, updates);
         
         // Se mudou para delivered, mostrar mensagem
         if (editingOrder.status !== 'delivered' && formData.status === 'delivered') {
           alert('Encomenda entregue! Uma venda foi criada automaticamente no histórico de vendas.');
         }
-      } catch (error) {
-        if (error instanceof Error) {
-          alert(`Erro ao atualizar encomenda: ${error.message}`);
-          loadData(); // Recarregar para reverter mudanças
-          return;
-        }
+      } else {
+        await orderService.create({
+          customerId: formData.customerId,
+          customerName: customer.name,
+          productId: formData.productId,
+          productName: product.name,
+          quantity: quantity,
+          unitPrice: unitPrice,
+          totalAmount: totalAmount,
+          orderDate: new Date(formData.orderDate),
+          expectedDeliveryDate: new Date(formData.expectedDeliveryDate),
+          status: formData.status,
+          notes: formData.notes,
+        });
       }
-    } else {
-      orderStorage.add({
-        customerId: formData.customerId,
-        customerName: customer.name,
-        productId: formData.productId,
-        productName: product.name,
-        quantity: quantity,
-        unitPrice: unitPrice,
-        totalAmount: totalAmount,
-        orderDate: new Date(formData.orderDate),
-        expectedDeliveryDate: new Date(formData.expectedDeliveryDate),
-        status: formData.status,
-        notes: formData.notes,
-      });
-    }
 
-    resetForm();
-    loadData();
-    setShowModal(false);
+      resetForm();
+      await loadData();
+      setShowModal(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao salvar encomenda: ${error.message}`);
+      }
+    }
   };
 
   const handleEdit = (order: Order) => {
@@ -128,10 +142,16 @@ export default function OrdersPage() {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta encomenda?')) {
-      orderStorage.delete(id);
-      loadData();
+      try {
+        await orderService.delete(id);
+        await loadData();
+      } catch (error) {
+        if (error instanceof Error) {
+          alert(`Erro ao excluir encomenda: ${error.message}`);
+        }
+      }
     }
   };
 
@@ -141,37 +161,29 @@ export default function OrdersPage() {
     setShowPaymentModal(true);
   };
 
-  const confirmQuickComplete = () => {
+  const confirmQuickComplete = async () => {
     if (!orderToComplete) return;
 
     try {
-      orderStorage.update(orderToComplete.id, {
-        status: 'delivered' as const,
-        paymentMethod: selectedPaymentMethod,
-        deliveredDate: new Date(),
-      });
+      await orderService.updateStatus(orderToComplete.id, 'delivered', selectedPaymentMethod);
       alert('✅ Encomenda concluída! Uma venda foi criada automaticamente no histórico de vendas.');
       setShowPaymentModal(false);
       setOrderToComplete(null);
-      loadData();
+      await loadData();
     } catch (error) {
       if (error instanceof Error) {
         alert(`Erro ao concluir encomenda: ${error.message}`);
-        loadData();
       }
     }
   };
 
-  const handleStatusChange = (orderId: string, newStatus: Order['status']) => {
+  const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
     try {
-      orderStorage.update(orderId, {
-        status: newStatus,
-      });
-      loadData();
+      await orderService.updateStatus(orderId, newStatus);
+      await loadData();
     } catch (error) {
       if (error instanceof Error) {
         alert(`Erro ao alterar status: ${error.message}`);
-        loadData();
       }
     }
   };
@@ -240,6 +252,35 @@ export default function OrdersPage() {
 
     return filtered;
   };
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando encomendas...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <div className="text-red-600 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-red-800 mb-2">Erro ao carregar dados</h2>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => loadData()}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">

@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Customer } from '@/types';
-import { customerStorage, saleStorage, orderStorage } from '@/lib/storage';
+import { customerService, saleService } from '@/services';
 
 export default function CustomersPage() {
   const searchParams = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -30,34 +32,48 @@ export default function CustomersPage() {
     }
   }, [searchParams]);
 
-  const loadCustomers = () => {
-    const allCustomers = customerStorage.getAll();
-    setCustomers(allCustomers);
+  const loadCustomers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const allCustomers = await customerService.getAll();
+      setCustomers(allCustomers);
+    } catch (err) {
+      console.error('Erro ao carregar clientes:', err);
+      setError('Não foi possível carregar os clientes. Verifique a conexão com o servidor.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const customerData = {
+    const customerData: Partial<Customer> = {
       name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      address: formData.address,
-      city: formData.city,
-      state: formData.state,
+      email: formData.email || undefined,
+      phone: formData.phone || undefined,
+      address: formData.address || undefined,
+      city: formData.city || undefined,
+      state: formData.state || undefined,
       birthDate: formData.birthDate ? new Date(formData.birthDate) : undefined,
       jarCredits: parseInt(formData.jarCredits) || 0,
     };
     
-    if (editingCustomer) {
-      customerStorage.update(editingCustomer.id, customerData);
-    } else {
-      customerStorage.add(customerData);
-    }
+    try {
+      if (editingCustomer) {
+        await customerService.update(editingCustomer.id, customerData);
+      } else {
+        await customerService.create(customerData as Omit<Customer, 'id' | 'createdAt'>);
+      }
 
-    resetForm();
-    loadCustomers();
-    setShowModal(false);
+      resetForm();
+      await loadCustomers();
+      setShowModal(false);
+    } catch (err) {
+      console.error('Erro ao salvar cliente:', err);
+      alert('Não foi possível salvar o cliente. Tente novamente.');
+    }
   };
 
   const handleEdit = (customer: Customer) => {
@@ -86,38 +102,24 @@ export default function CustomersPage() {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
-    // Verificar se o cliente tem vendas ativas (não canceladas)
-    const sales = saleStorage.getAll();
-    const activeSales = sales.filter(sale => 
-      sale.customerId === id && sale.status !== 'cancelled'
-    );
+  const handleDelete = async (id: string) => {
+    try {
+      // Verificar se o cliente tem vendas ativas (não canceladas)
+      const sales = await saleService.getByCustomer(id);
+      const activeSales = sales.filter(sale => sale.status !== 'cancelled');
 
-    // Verificar se o cliente tem encomendas ativas (não canceladas)
-    const orders = orderStorage.getAll();
-    const activeOrders = orders.filter(order => 
-      order.customerId === id && order.status !== 'cancelled'
-    );
-
-    if (activeSales.length > 0 || activeOrders.length > 0) {
-      let message = 'Este cliente não pode ser excluído porque possui:\n\n';
-      
       if (activeSales.length > 0) {
-        message += `• ${activeSales.length} venda(s) ativa(s)\n`;
+        alert(`Este cliente não pode ser excluído porque possui ${activeSales.length} venda(s) ativa(s). Cancele as vendas antes de excluir o cliente.`);
+        return;
       }
-      
-      if (activeOrders.length > 0) {
-        message += `• ${activeOrders.length} encomenda(s) ativa(s)\n`;
-      }
-      
-      message += '\nCancele ou conclua os pedidos antes de excluir o cliente.';
-      alert(message);
-      return;
-    }
 
-    if (confirm('Tem certeza que deseja excluir este cliente?')) {
-      customerStorage.delete(id);
-      loadCustomers();
+      if (confirm('Tem certeza que deseja excluir este cliente?')) {
+        await customerService.delete(id);
+        await loadCustomers();
+      }
+    } catch (err) {
+      console.error('Erro ao excluir cliente:', err);
+      alert('Não foi possível excluir o cliente. Tente novamente.');
     }
   };
 
@@ -156,7 +158,26 @@ export default function CustomersPage() {
         </button>
       </div>
 
-      {customers.length === 0 ? (
+      {loading ? (
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#22452B] mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando clientes...</p>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 rounded-lg shadow-md p-12 text-center">
+          <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="text-xl font-semibold text-red-900 mb-2">Erro ao carregar</h3>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button
+            onClick={loadCustomers}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      ) : customers.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <svg className="w-16 h-16 text-[#B49959] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />

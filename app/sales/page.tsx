@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Sale, SaleItem, Product, Customer } from '@/types';
-import { saleStorage, productStorage, customerStorage, settingsStorage } from '@/lib/storage';
+import { Sale, SaleItem, Product, Customer, Settings } from '@/types';
+import { saleService, productService, customerService, settingsService } from '@/services';
 
 export default function SalesPage() {
   const searchParams = useSearchParams();
@@ -30,6 +30,14 @@ export default function SalesPage() {
   const [additionalDiscountPercentage, setAdditionalDiscountPercentage] = useState('0');
   const [jarCreditsUsed, setJarCreditsUsed] = useState(0);
   const [jarDiscountAmount, setJarDiscountAmount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [settings, setSettings] = useState<Settings>({
+    birthdayDiscount: 0,
+    jarDiscount: 0,
+    lowStockThreshold: 10,
+    companyName: 'Velas Aromáticas'
+  });
 
   useEffect(() => {
     loadData();
@@ -45,10 +53,26 @@ export default function SalesPage() {
     calculateJarDiscount();
   }, [saleItems, selectedCustomer, customers]);
 
-  const loadData = () => {
-    setSales(saleStorage.getAll());
-    setProducts(productStorage.getAll());
-    setCustomers(customerStorage.getAll());
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [salesData, productsData, customersData, settingsData] = await Promise.all([
+        saleService.getAll(),
+        productService.getAll(),
+        customerService.getAll(),
+        settingsService.get(),
+      ]);
+      setSales(salesData);
+      setProducts(productsData);
+      setCustomers(customersData);
+      setSettings(settingsData);
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err);
+      setError('Não foi possível carregar os dados. Verifique a conexão com o servidor.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Verificar se é mês de aniversário do cliente
@@ -65,8 +89,6 @@ export default function SalesPage() {
 
   // Aplicar desconto de aniversário automaticamente
   const applyBirthdayDiscount = (customerId: string) => {
-    const settings = settingsStorage.get();
-    
     if (settings.birthdayDiscount > 0 && checkBirthdayMonth(customerId)) {
       setBirthdayDiscountPercentage(settings.birthdayDiscount.toString());
       setIsBirthdayDiscount(true);
@@ -91,7 +113,6 @@ export default function SalesPage() {
       return;
     }
 
-    const settings = settingsStorage.get();
     if (settings.jarDiscount <= 0) {
       setJarCreditsUsed(0);
       setJarDiscountAmount(0);
@@ -202,10 +223,10 @@ export default function SalesPage() {
     return calculateSubtotal() - calculateDiscount() - jarDiscountAmount;
   };
 
-  const handleSubmitSale = () => {
+  const handleSubmitSale = async () => {
     // Se está editando, usar função de atualização
     if (editingSale) {
-      handleUpdateSale();
+      await handleUpdateSale();
       return;
     }
 
@@ -275,17 +296,17 @@ export default function SalesPage() {
     };
 
     try {
-      saleStorage.add(newSale);
+      await saleService.create(newSale);
       
       // Subtrair créditos de potes do cliente (apenas se não for cancelada)
       if (saleStatus !== 'cancelled' && jarCreditsUsed > 0) {
         const currentCredits = customer.jarCredits || 0;
         const newCredits = Math.max(0, currentCredits - jarCreditsUsed);
-        customerStorage.update(customer.id, { jarCredits: newCredits });
+        await customerService.updateJarCredits(customer.id, newCredits);
       }
       
       resetForm();
-      loadData();
+      await loadData();
       setShowModal(false);
       
       let message = 'Venda realizada com sucesso!';
@@ -360,7 +381,7 @@ export default function SalesPage() {
     setShowModal(true);
   };
 
-  const handleUpdateSale = () => {
+  const handleUpdateSale = async () => {
     if (!editingSale) return;
     
     if (!selectedCustomer || saleItems.length === 0) {
@@ -428,10 +449,10 @@ export default function SalesPage() {
     };
 
     try {
-      saleStorage.update(editingSale.id, updatedSale);
+      await saleService.update(editingSale.id, updatedSale);
       
       resetForm();
-      loadData();
+      await loadData();
       setShowModal(false);
       alert('Venda atualizada com sucesso!');
     } catch (error) {
@@ -443,7 +464,7 @@ export default function SalesPage() {
     }
   };
 
-  const handleDeleteSale = (saleId: string) => {
+  const handleDeleteSale = async (saleId: string) => {
     const sale = sales.find(s => s.id === saleId);
     if (!sale) return;
 
@@ -458,8 +479,8 @@ export default function SalesPage() {
     }
 
     try {
-      saleStorage.delete(saleId);
-      loadData();
+      await saleService.delete(saleId);
+      await loadData();
       setViewingSale(null);
       alert('Venda excluída com sucesso!');
     } catch (error) {
@@ -471,7 +492,7 @@ export default function SalesPage() {
     }
   };
 
-  const handleUpdateStatus = (saleId: string, newStatus: Sale['status']) => {
+  const handleUpdateStatus = async (saleId: string, newStatus: Sale['status']) => {
     // Se está mudando para "paid", pedir método de pagamento
     if (newStatus === 'paid') {
       setPendingStatusChange({ saleId, newStatus });
@@ -482,8 +503,8 @@ export default function SalesPage() {
 
     // Para outros status, atualizar diretamente
     try {
-      saleStorage.update(saleId, { status: newStatus });
-      loadData();
+      await saleService.updateStatus(saleId, newStatus);
+      await loadData();
       setEditingStatus(null);
     } catch (error) {
       if (error instanceof Error) {
@@ -496,18 +517,15 @@ export default function SalesPage() {
     }
   };
 
-  const confirmPaymentMethod = () => {
+  const confirmPaymentMethod = async () => {
     if (!paymentMethod || !pendingStatusChange) {
       alert('Selecione um método de pagamento!');
       return;
     }
 
     try {
-      saleStorage.update(pendingStatusChange.saleId, { 
-        status: pendingStatusChange.newStatus,
-        paymentMethod: paymentMethod as 'cash' | 'pix' | 'debit' | 'credit'
-      });
-      loadData();
+      await saleService.updateStatus(pendingStatusChange.saleId, pendingStatusChange.newStatus, paymentMethod as 'cash' | 'pix' | 'debit' | 'credit');
+      await loadData();
       setShowPaymentModal(false);
       setPendingStatusChange(null);
       setPaymentMethod('');
@@ -550,8 +568,6 @@ export default function SalesPage() {
   const printInvoice = (sale: Sale) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-
-    const settings = settingsStorage.get();
 
     const statusLabels = {
       pending: 'Pendente',
@@ -699,6 +715,37 @@ export default function SalesPage() {
     printWindow.document.write(invoiceHTML);
     printWindow.document.close();
   };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#22452B] mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando vendas...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 rounded-lg shadow-md p-12 text-center">
+          <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="text-xl font-semibold text-red-900 mb-2">Erro ao carregar</h3>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button
+            onClick={loadData}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">

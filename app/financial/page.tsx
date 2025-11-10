@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Expense, InstallmentPayment, Sale } from '@/types';
-import { expenseStorage, installmentStorage, saleStorage } from '@/lib/storage';
+import { expenseService, installmentService, saleService } from '@/services';
 
 export default function FinancialPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [installments, setInstallments] = useState<InstallmentPayment[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showInstallmentModal, setShowInstallmentModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -40,10 +42,24 @@ export default function FinancialPage() {
     setSelectedYear(String(now.getFullYear()));
   }, []);
 
-  const loadData = () => {
-    setExpenses(expenseStorage.getAll());
-    setInstallments(installmentStorage.getAll());
-    setSales(saleStorage.getAll());
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [expensesData, installmentsData, salesData] = await Promise.all([
+        expenseService.getAll(),
+        installmentService.getAll(),
+        saleService.getAll(),
+      ]);
+      setExpenses(expensesData);
+      setInstallments(installmentsData);
+      setSales(salesData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
+      console.error('Error loading data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getCategoryLabel = (category: string) => {
@@ -58,7 +74,7 @@ export default function FinancialPage() {
     return labels[category] || category;
   };
 
-  const handleSubmitExpense = (e: React.FormEvent) => {
+  const handleSubmitExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const amount = parseFloat(expenseForm.amount);
@@ -76,18 +92,24 @@ export default function FinancialPage() {
       notes: expenseForm.notes,
     };
 
-    if (editingExpense) {
-      expenseStorage.update(editingExpense.id, expenseData);
-    } else {
-      expenseStorage.add(expenseData);
-    }
+    try {
+      if (editingExpense) {
+        await expenseService.update(editingExpense.id, expenseData);
+      } else {
+        await expenseService.create(expenseData);
+      }
 
-    resetExpenseForm();
-    loadData();
-    setShowExpenseModal(false);
+      resetExpenseForm();
+      await loadData();
+      setShowExpenseModal(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao salvar despesa: ${error.message}`);
+      }
+    }
   };
 
-  const handleSubmitInstallment = (e: React.FormEvent) => {
+  const handleSubmitInstallment = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const totalAmount = parseFloat(installmentForm.totalAmount);
@@ -116,15 +138,21 @@ export default function FinancialPage() {
       paid: Array(installments).fill(false),
     };
 
-    if (editingInstallment) {
-      installmentStorage.update(editingInstallment.id, installmentData);
-    } else {
-      installmentStorage.add(installmentData);
-    }
+    try {
+      if (editingInstallment) {
+        await installmentService.update(editingInstallment.id, installmentData);
+      } else {
+        await installmentService.create(installmentData);
+      }
 
-    resetInstallmentForm();
-    loadData();
-    setShowInstallmentModal(false);
+      resetInstallmentForm();
+      await loadData();
+      setShowInstallmentModal(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao salvar parcelamento: ${error.message}`);
+      }
+    }
   };
 
   const resetExpenseForm = () => {
@@ -166,21 +194,33 @@ export default function FinancialPage() {
     setShowExpenseModal(true);
   };
 
-  const handleDeleteExpense = (id: string) => {
+  const handleDeleteExpense = async (id: string) => {
     if (confirm('Deseja realmente excluir esta despesa?')) {
-      expenseStorage.delete(id);
-      loadData();
+      try {
+        await expenseService.delete(id);
+        await loadData();
+      } catch (error) {
+        if (error instanceof Error) {
+          alert(`Erro ao excluir despesa: ${error.message}`);
+        }
+      }
     }
   };
 
-  const handleDeleteInstallment = (id: string) => {
+  const handleDeleteInstallment = async (id: string) => {
     if (confirm('Deseja realmente excluir este parcelamento?')) {
-      installmentStorage.delete(id);
-      loadData();
+      try {
+        await installmentService.delete(id);
+        await loadData();
+      } catch (error) {
+        if (error instanceof Error) {
+          alert(`Erro ao excluir parcelamento: ${error.message}`);
+        }
+      }
     }
   };
 
-  const toggleInstallmentPaid = (id: string, index: number) => {
+  const toggleInstallmentPaid = async (id: string, index: number) => {
     const installment = installments.find(i => i.id === id);
     if (!installment) return;
 
@@ -209,9 +249,13 @@ export default function FinancialPage() {
       }
     }
 
-    const result = installmentStorage.markInstallmentAsPaid(id, index);
-    if (result) {
-      loadData();
+    try {
+      await installmentService.toggleInstallment(id, index);
+      await loadData();
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao atualizar parcela: ${error.message}`);
+      }
     }
   };
 
@@ -293,6 +337,35 @@ export default function FinancialPage() {
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#AF6138] mx-auto"></div>
+          <p className="mt-4 text-[#814923]">Carregando dados financeiros...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <div className="text-red-600 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-red-800 mb-2">Erro ao carregar dados</h2>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => loadData()}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">

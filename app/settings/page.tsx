@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Settings } from '@/types';
-import { settingsStorage } from '@/lib/storage';
+import { settingsService } from '@/services';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
@@ -15,31 +15,93 @@ export default function SettingsPage() {
     jarDiscount: 0,
   });
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadSettings();
   }, []);
 
-  const loadSettings = () => {
-    const currentSettings = settingsStorage.get();
-    setSettings(currentSettings);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    settingsStorage.save(settings);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
-
-  const handleReset = () => {
-    if (confirm('Tem certeza que deseja restaurar as configurações padrão?')) {
-      const defaultSettings = settingsStorage.reset();
-      setSettings(defaultSettings);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const currentSettings = await settingsService.get();
+      setSettings(currentSettings);
+    } catch (err) {
+      console.error('Erro ao carregar configurações:', err);
+      setError('Não foi possível carregar as configurações. Verifique a conexão com o servidor.');
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await settingsService.update(settings);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Erro ao salvar configurações:', err);
+      alert('Não foi possível salvar as configurações. Tente novamente.');
+    }
+  };
+
+  const handleReset = async () => {
+    if (confirm('Tem certeza que deseja restaurar as configurações padrão?')) {
+      const defaultSettings: Settings = {
+        lowStockThreshold: 10,
+        companyName: 'Velas Aromáticas',
+        companyPhone: '',
+        companyEmail: '',
+        companyAddress: '',
+        birthdayDiscount: 0,
+        jarDiscount: 0,
+      };
+      
+      try {
+        await settingsService.update(defaultSettings);
+        setSettings(defaultSettings);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      } catch (err) {
+        console.error('Erro ao restaurar configurações:', err);
+        alert('Não foi possível restaurar as configurações. Tente novamente.');
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#22452B] mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando configurações...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 rounded-lg shadow-md p-12 text-center">
+          <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="text-xl font-semibold text-red-900 mb-2">Erro ao carregar</h3>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button
+            onClick={loadSettings}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">

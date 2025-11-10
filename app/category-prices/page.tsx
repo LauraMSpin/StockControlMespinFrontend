@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { CategoryPrice } from '@/types';
-import { categoryPriceStorage, productStorage } from '@/lib/storage';
+import { categoryPriceService, productService } from '@/services';
 
 export default function CategoryPricesPage() {
   const [categoryPrices, setCategoryPrices] = useState<CategoryPrice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingPrice, setEditingPrice] = useState<CategoryPrice | null>(null);
   const [formData, setFormData] = useState({
@@ -17,11 +19,21 @@ export default function CategoryPricesPage() {
     loadData();
   }, []);
 
-  const loadData = () => {
-    setCategoryPrices(categoryPriceStorage.getAll());
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await categoryPriceService.getAll();
+      setCategoryPrices(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
+      console.error('Error loading data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const price = parseFloat(formData.price);
@@ -42,54 +54,54 @@ export default function CategoryPricesPage() {
       return;
     }
     
-    if (editingPrice) {
-      // Verificar quantos produtos serão afetados
-      const products = productStorage.getAll();
-      const oldCategoryName = editingPrice.categoryName;
-      const affectedProducts = products.filter(p => 
-        p.category?.toLowerCase() === oldCategoryName.toLowerCase()
-      );
-      
-      // Confirmar atualização se houver produtos afetados
-      if (affectedProducts.length > 0) {
-        const confirmUpdate = confirm(
-          `Esta ação irá atualizar o preço de ${affectedProducts.length} produto(s) da categoria "${oldCategoryName}" para R$ ${price.toFixed(2)}.\n\n` +
-          `Os produtos afetados são:\n${affectedProducts.map(p => `- ${p.name}`).slice(0, 5).join('\n')}` +
-          `${affectedProducts.length > 5 ? `\n... e mais ${affectedProducts.length - 5} produto(s)` : ''}\n\n` +
-          `Vendas já registradas NÃO serão alteradas.\n\nDeseja continuar?`
+    try {
+      if (editingPrice) {
+        // Verificar quantos produtos serão afetados
+        const products = await productService.getAll();
+        const oldCategoryName = editingPrice.categoryName;
+        const affectedProducts = products.filter((p: any) => 
+          p.category?.toLowerCase() === oldCategoryName.toLowerCase()
         );
         
-        if (!confirmUpdate) {
-          return;
+        // Confirmar atualização se houver produtos afetados
+        if (affectedProducts.length > 0) {
+          const confirmUpdate = confirm(
+            `Esta ação irá atualizar o preço de ${affectedProducts.length} produto(s) da categoria "${oldCategoryName}" para R$ ${price.toFixed(2)}.\n\n` +
+            `Os produtos afetados são:\n${affectedProducts.map((p: any) => `- ${p.name}`).slice(0, 5).join('\n')}` +
+            `${affectedProducts.length > 5 ? `\n... e mais ${affectedProducts.length - 5} produto(s)` : ''}\n\n` +
+            `Vendas já registradas NÃO serão alteradas.\n\nDeseja continuar?`
+          );
+          
+          if (!confirmUpdate) {
+            return;
+          }
         }
-      }
-      
-      categoryPriceStorage.update(editingPrice.id, {
-        categoryName: formData.categoryName,
-        price: price,
-      });
-      
-      // Atualizar preço de todos os produtos desta categoria
-      affectedProducts.forEach(product => {
-        productStorage.update(product.id, {
+        
+        await categoryPriceService.update(editingPrice.id, {
+          categoryName: formData.categoryName,
           price: price,
-          priceChangeReason: `Atualização de categoria "${oldCategoryName}"`,
-        } as any);
-      });
-      
-      if (affectedProducts.length > 0) {
-        alert(`✅ Preço atualizado com sucesso!\n\n${affectedProducts.length} produto(s) da categoria "${oldCategoryName}" foram atualizados para R$ ${price.toFixed(2)}.`);
+        });
+        
+        // Aplicar preço aos produtos da categoria
+        if (affectedProducts.length > 0) {
+          await categoryPriceService.applyToProducts(formData.categoryName, price);
+          alert(`✅ Preço atualizado com sucesso!\n\n${affectedProducts.length} produto(s) da categoria "${oldCategoryName}" foram atualizados para R$ ${price.toFixed(2)}.`);
+        }
+      } else {
+        await categoryPriceService.create({
+          categoryName: formData.categoryName,
+          price: price,
+        });
       }
-    } else {
-      categoryPriceStorage.add({
-        categoryName: formData.categoryName,
-        price: price,
-      });
-    }
 
-    resetForm();
-    loadData();
-    setShowModal(false);
+      resetForm();
+      await loadData();
+      setShowModal(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao salvar categoria: ${error.message}`);
+      }
+    }
   };
 
   const handleEdit = (categoryPrice: CategoryPrice) => {
@@ -101,10 +113,16 @@ export default function CategoryPricesPage() {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este preço de categoria?')) {
-      categoryPriceStorage.delete(id);
-      loadData();
+      try {
+        await categoryPriceService.delete(id);
+        await loadData();
+      } catch (error) {
+        if (error instanceof Error) {
+          alert(`Erro ao excluir categoria: ${error.message}`);
+        }
+      }
     }
   };
 
@@ -120,6 +138,35 @@ export default function CategoryPricesPage() {
     setShowModal(false);
     resetForm();
   };
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#22452B] mx-auto"></div>
+          <p className="mt-4 text-[#814923]">Carregando categorias...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <div className="text-red-600 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-red-800 mb-2">Erro ao carregar dados</h2>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => loadData()}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">

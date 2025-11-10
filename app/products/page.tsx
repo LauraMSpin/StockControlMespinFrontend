@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Product } from '@/types';
-import { productStorage, settingsStorage, categoryPriceStorage } from '@/lib/storage';
+import { productService, settingsService } from '@/services';
 import Link from 'next/link';
 
 export default function ProductsPage() {
@@ -14,6 +14,8 @@ export default function ProductsPage() {
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const [editingQuantity, setEditingQuantity] = useState<{ productId: string; value: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -25,9 +27,7 @@ export default function ProductsPage() {
   });
 
   useEffect(() => {
-    const settings = settingsStorage.get();
-    setLowStockThreshold(settings.lowStockThreshold);
-    loadProducts();
+    loadData();
     
     // Verificar se deve abrir o modal automaticamente
     if (searchParams.get('openModal') === 'true') {
@@ -35,12 +35,34 @@ export default function ProductsPage() {
     }
   }, [searchParams]);
 
-  const loadProducts = () => {
-    const allProducts = productStorage.getAll();
-    setProducts(allProducts);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [settingsData, productsData] = await Promise.all([
+        settingsService.get(),
+        productService.getAll()
+      ]);
+      setLowStockThreshold(settingsData.lowStockThreshold);
+      setProducts(productsData);
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err);
+      setError('Não foi possível carregar os produtos. Verifique a conexão com o servidor.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const loadProducts = async () => {
+    try {
+      const allProducts = await productService.getAll();
+      setProducts(allProducts);
+    } catch (err) {
+      console.error('Erro ao carregar produtos:', err);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const quantity = parseInt(formData.quantity);
@@ -57,31 +79,30 @@ export default function ProductsPage() {
       return;
     }
     
-    if (editingProduct) {
-      productStorage.update(editingProduct.id, {
-        name: formData.name,
-        description: formData.description,
-        price: price,
-        quantity: quantity,
-        category: formData.category,
-        fragrance: formData.fragrance,
-        weight: formData.weight,
-      });
-    } else {
-      productStorage.add({
-        name: formData.name,
-        description: formData.description,
-        price: price,
-        quantity: quantity,
-        category: formData.category,
-        fragrance: formData.fragrance,
-        weight: formData.weight,
-      });
-    }
+    const productData: Partial<Product> = {
+      name: formData.name,
+      description: formData.description,
+      price: price,
+      quantity: quantity,
+      category: formData.category || undefined,
+      fragrance: formData.fragrance || undefined,
+      weight: formData.weight || undefined,
+    };
+    
+    try {
+      if (editingProduct) {
+        await productService.update(editingProduct.id, productData);
+      } else {
+        await productService.create(productData as Omit<Product, 'id' | 'createdAt' | 'updatedAt'>);
+      }
 
-    resetForm();
-    loadProducts();
-    setShowModal(false);
+      resetForm();
+      await loadProducts();
+      setShowModal(false);
+    } catch (err) {
+      console.error('Erro ao salvar produto:', err);
+      alert('Não foi possível salvar o produto. Tente novamente.');
+    }
   };
 
   const handleEdit = (product: Product) => {
@@ -99,10 +120,15 @@ export default function ProductsPage() {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este produto?')) {
-      productStorage.delete(id);
-      loadProducts();
+      try {
+        await productService.delete(id);
+        await loadProducts();
+      } catch (err) {
+        console.error('Erro ao excluir produto:', err);
+        alert('Não foi possível excluir o produto. Tente novamente.');
+      }
     }
   };
 
@@ -133,7 +159,7 @@ export default function ProductsPage() {
     }
   };
 
-  const handleQuantityBlur = () => {
+  const handleQuantityBlur = async () => {
     if (editingQuantity) {
       const newQuantity = parseInt(editingQuantity.value) || 0;
       
@@ -143,8 +169,13 @@ export default function ProductsPage() {
         return;
       }
 
-      productStorage.update(editingQuantity.productId, { quantity: newQuantity });
-      loadProducts();
+      try {
+        await productService.updateStock(editingQuantity.productId, newQuantity);
+        await loadProducts();
+      } catch (err) {
+        console.error('Erro ao atualizar quantidade:', err);
+        alert('Não foi possível atualizar a quantidade. Tente novamente.');
+      }
       setEditingQuantity(null);
     }
   };
@@ -166,13 +197,18 @@ export default function ProductsPage() {
     }
   };
 
-  const adjustQuantity = (productId: string, adjustment: number) => {
+  const adjustQuantity = async (productId: string, adjustment: number) => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
     const newQuantity = Math.max(0, product.quantity + adjustment);
-    productStorage.update(productId, { quantity: newQuantity });
-    loadProducts();
+    try {
+      await productService.updateStock(productId, newQuantity);
+      await loadProducts();
+    } catch (err) {
+      console.error('Erro ao ajustar quantidade:', err);
+      alert('Não foi possível ajustar a quantidade. Tente novamente.');
+    }
   };
 
   const resetForm = () => {
@@ -210,7 +246,26 @@ export default function ProductsPage() {
         </button>
       </div>
 
-      {products.length === 0 ? (
+      {loading ? (
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#22452B] mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando produtos...</p>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 rounded-lg shadow-md p-12 text-center">
+          <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="text-xl font-semibold text-red-900 mb-2">Erro ao carregar</h3>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button
+            onClick={loadData}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      ) : products.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <svg className="w-16 h-16 text-[#B49959] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -412,20 +467,14 @@ export default function ProductsPage() {
                       const newCategory = e.target.value;
                       setFormData({ ...formData, category: newCategory });
                       
-                      // Buscar preço da categoria se existir
-                      const categoryPrice = categoryPriceStorage.getByCategory(newCategory);
-                      if (categoryPrice && !editingProduct) {
-                        setFormData(prev => ({ ...prev, category: newCategory, price: categoryPrice.price.toString() }));
-                      }
+                      // TODO: Buscar preço da categoria quando categoryPriceService estiver implementado
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Selecione uma categoria</option>
-                    {categoryPriceStorage.getAll().map((cp) => (
-                      <option key={cp.id} value={cp.categoryName}>
-                        {cp.categoryName} - R$ {cp.price.toFixed(2)}
-                      </option>
-                    ))}
+                    <option value="Vela Aromatizada">Vela Aromatizada</option>
+                    <option value="Vela Decorativa">Vela Decorativa</option>
+                    <option value="Difusor">Difusor</option>
                   </select>
                 </div>
 
@@ -468,19 +517,7 @@ export default function ProductsPage() {
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  {formData.category && (() => {
-                    const categoryPrice = categoryPriceStorage.getByCategory(formData.category);
-                    if (categoryPrice && formData.price === categoryPrice.price.toString()) {
-                      return (
-                        <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                          Preço aplicado da categoria "{categoryPrice.categoryName}"
-                        </p>
-                      );
-                    }
-                  })()}
+                  {/* TODO: Mostrar preço da categoria quando categoryPriceService estiver implementado */}
                 </div>
 
                 <div>

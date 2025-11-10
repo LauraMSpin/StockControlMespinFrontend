@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { Product, Material, ProductionMaterial } from '@/types';
-import { productStorage, materialStorage } from '@/lib/storage';
+import { productService, materialService } from '@/services';
 
 export default function ProductionCostsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
@@ -33,12 +35,25 @@ export default function ProductionCostsPage() {
     loadData();
   }, []);
 
-  const loadData = () => {
-    setProducts(productStorage.getAll());
-    setMaterials(materialStorage.getAll());
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [productsData, materialsData] = await Promise.all([
+        productService.getAll(),
+        materialService.getAll(),
+      ]);
+      setProducts(productsData);
+      setMaterials(materialsData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
+      console.error('Error loading data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmitMaterial = (e: React.FormEvent) => {
+  const handleSubmitMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const totalQuantity = parseFloat(materialForm.totalQuantityPurchased);
@@ -56,33 +71,43 @@ export default function ProductionCostsPage() {
 
     const costPerUnit = totalCost / totalQuantity;
 
-    if (editingMaterial) {
-      materialStorage.update(editingMaterial.id, {
-        name: materialForm.name,
-        unit: materialForm.unit,
-        totalQuantityPurchased: totalQuantity,
-        totalCostPaid: totalCost,
-        costPerUnit: costPerUnit,
-        category: materialForm.category,
-        supplier: materialForm.supplier,
-        notes: materialForm.notes,
-      });
-    } else {
-      materialStorage.add({
-        name: materialForm.name,
-        unit: materialForm.unit,
-        totalQuantityPurchased: totalQuantity,
-        totalCostPaid: totalCost,
-        costPerUnit: costPerUnit,
-        category: materialForm.category,
-        supplier: materialForm.supplier,
-        notes: materialForm.notes,
-      });
-    }
+    try {
+      if (editingMaterial) {
+        await materialService.update(editingMaterial.id, {
+          name: materialForm.name,
+          unit: materialForm.unit,
+          totalQuantityPurchased: totalQuantity,
+          totalCostPaid: totalCost,
+          costPerUnit: costPerUnit,
+          currentStock: totalQuantity,
+          lowStockAlert: 0,
+          category: materialForm.category,
+          supplier: materialForm.supplier,
+          notes: materialForm.notes,
+        });
+      } else {
+        await materialService.create({
+          name: materialForm.name,
+          unit: materialForm.unit,
+          totalQuantityPurchased: totalQuantity,
+          totalCostPaid: totalCost,
+          costPerUnit: costPerUnit,
+          currentStock: totalQuantity,
+          lowStockAlert: 0,
+          category: materialForm.category,
+          supplier: materialForm.supplier,
+          notes: materialForm.notes,
+        });
+      }
 
-    resetMaterialForm();
-    loadData();
-    setShowMaterialForm(false);
+      resetMaterialForm();
+      await loadData();
+      setShowMaterialForm(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao salvar material: ${error.message}`);
+      }
+    }
   };
 
   const handleEditMaterial = (material: Material) => {
@@ -99,10 +124,16 @@ export default function ProductionCostsPage() {
     setShowMaterialForm(true);
   };
 
-  const handleDeleteMaterial = (id: string) => {
+  const handleDeleteMaterial = async (id: string) => {
     if (confirm('Deseja excluir este material? Ele será removido de todos os produtos.')) {
-      materialStorage.delete(id);
-      loadData();
+      try {
+        await materialService.delete(id);
+        await loadData();
+      } catch (error) {
+        if (error instanceof Error) {
+          alert(`Erro ao excluir material: ${error.message}`);
+        }
+      }
     }
   };
 
@@ -123,7 +154,7 @@ export default function ProductionCostsPage() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   };
 
-  const handleAddMaterialToProduct = (e: React.FormEvent) => {
+  const handleAddMaterialToProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedProduct) return;
@@ -141,7 +172,7 @@ export default function ProductionCostsPage() {
       return;
     }
 
-    const material = materialStorage.getById(materialId);
+    const material = materials.find(m => m.id === materialId);
     if (!material) {
       alert('Material não encontrado!');
       return;
@@ -173,23 +204,29 @@ export default function ProductionCostsPage() {
     const totalProductionCost = updatedMaterials.reduce((sum, m) => sum + m.totalCost, 0);
     const profitMargin = selectedProduct.price - totalProductionCost;
 
-    productStorage.update(selectedProduct.id, {
-      productionMaterials: updatedMaterials,
-      productionCost: totalProductionCost,
-      profitMargin: profitMargin,
-    });
+    try {
+      await productService.update(selectedProduct.id, {
+        productionMaterials: updatedMaterials,
+        productionCost: totalProductionCost,
+        profitMargin: profitMargin,
+      });
 
-    const updatedProduct = { 
-      ...selectedProduct, 
-      productionMaterials: updatedMaterials,
-      productionCost: totalProductionCost,
-      profitMargin: profitMargin,
-    };
-    setSelectedProduct(updatedProduct);
+      const updatedProduct = { 
+        ...selectedProduct, 
+        productionMaterials: updatedMaterials,
+        productionCost: totalProductionCost,
+        profitMargin: profitMargin,
+      };
+      setSelectedProduct(updatedProduct);
 
-    resetAddToProductForm();
-    loadData();
-    setShowAddToProductModal(false);
+      resetAddToProductForm();
+      await loadData();
+      setShowAddToProductModal(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao adicionar material: ${error.message}`);
+      }
+    }
   };
 
   const handleEditProductMaterial = (material: ProductionMaterial) => {
@@ -201,27 +238,33 @@ export default function ProductionCostsPage() {
     setShowAddToProductModal(true);
   };
 
-  const handleDeleteProductMaterial = (materialId: string) => {
+  const handleDeleteProductMaterial = async (materialId: string) => {
     if (!selectedProduct || !confirm('Deseja remover este material do produto?')) return;
 
     const updatedMaterials = (selectedProduct.productionMaterials || []).filter(m => m.id !== materialId);
     const totalProductionCost = updatedMaterials.reduce((sum, m) => sum + m.totalCost, 0);
     const profitMargin = selectedProduct.price - totalProductionCost;
 
-    productStorage.update(selectedProduct.id, {
-      productionMaterials: updatedMaterials,
-      productionCost: totalProductionCost,
-      profitMargin: profitMargin,
-    });
+    try {
+      await productService.update(selectedProduct.id, {
+        productionMaterials: updatedMaterials,
+        productionCost: totalProductionCost,
+        profitMargin: profitMargin,
+      });
 
-    const updatedProduct = { 
-      ...selectedProduct, 
-      productionMaterials: updatedMaterials,
-      productionCost: totalProductionCost,
-      profitMargin: profitMargin,
-    };
-    setSelectedProduct(updatedProduct);
-    loadData();
+      const updatedProduct = { 
+        ...selectedProduct, 
+        productionMaterials: updatedMaterials,
+        productionCost: totalProductionCost,
+        profitMargin: profitMargin,
+      };
+      setSelectedProduct(updatedProduct);
+      await loadData();
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao remover material: ${error.message}`);
+      }
+    }
   };
 
   const resetAddToProductForm = () => {
@@ -231,6 +274,35 @@ export default function ProductionCostsPage() {
     });
     setEditingProductMaterial(null);
   };
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#AF6138] mx-auto"></div>
+          <p className="mt-4 text-[#814923]">Carregando dados...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <div className="text-red-600 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-red-800 mb-2">Erro ao carregar dados</h2>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => loadData()}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">

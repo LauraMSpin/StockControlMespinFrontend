@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Material } from '@/types';
-import { materialStorage } from '@/lib/storage';
+import { materialService } from '@/services';
 
 export default function MaterialsPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     unit: 'g',
@@ -24,11 +26,21 @@ export default function MaterialsPage() {
     loadData();
   }, []);
 
-  const loadData = () => {
-    setMaterials(materialStorage.getAll());
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const materialsData = await materialService.getAll();
+      setMaterials(materialsData);
+    } catch (err) {
+      console.error('Erro ao carregar materiais:', err);
+      setError('Não foi possível carregar os materiais.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const totalQuantityPurchased = parseFloat(formData.totalQuantityPurchased);
@@ -37,37 +49,33 @@ export default function MaterialsPage() {
     const totalCostPaid = parseFloat(formData.totalCostPaid);
     const costPerUnit = totalQuantityPurchased > 0 ? totalCostPaid / totalQuantityPurchased : 0;
 
-    if (editingMaterial) {
-      materialStorage.update(editingMaterial.id, {
-        name: formData.name,
-        unit: formData.unit,
-        totalQuantityPurchased,
-        currentStock,
-        lowStockAlert,
-        totalCostPaid,
-        costPerUnit,
-        category: formData.category,
-        supplier: formData.supplier,
-        notes: formData.notes,
-      });
-    } else {
-      materialStorage.add({
-        name: formData.name,
-        unit: formData.unit,
-        totalQuantityPurchased,
-        currentStock,
-        lowStockAlert,
-        totalCostPaid,
-        costPerUnit,
-        category: formData.category,
-        supplier: formData.supplier,
-        notes: formData.notes,
-      });
-    }
+    const materialData: Partial<Material> = {
+      name: formData.name,
+      unit: formData.unit,
+      totalQuantityPurchased,
+      currentStock,
+      lowStockAlert,
+      totalCostPaid,
+      costPerUnit,
+      category: formData.category || undefined,
+      supplier: formData.supplier || undefined,
+      notes: formData.notes || undefined,
+    };
 
-    resetForm();
-    loadData();
-    setShowModal(false);
+    try {
+      if (editingMaterial) {
+        await materialService.update(editingMaterial.id, materialData);
+      } else {
+        await materialService.create(materialData as Omit<Material, 'id' | 'createdAt' | 'updatedAt'>);
+      }
+
+      resetForm();
+      await loadData();
+      setShowModal(false);
+    } catch (err) {
+      console.error('Erro ao salvar material:', err);
+      alert('Não foi possível salvar o material. Tente novamente.');
+    }
   };
 
   const handleEdit = (material: Material) => {
@@ -86,10 +94,15 @@ export default function MaterialsPage() {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este material?')) {
-      materialStorage.delete(id);
-      loadData();
+      try {
+        await materialService.delete(id);
+        await loadData();
+      } catch (err) {
+        console.error('Erro ao excluir material:', err);
+        alert('Não foi possível excluir o material. Tente novamente.');
+      }
     }
   };
 
@@ -137,6 +150,37 @@ export default function MaterialsPage() {
     }
     return { text: 'Estoque ok', color: 'text-green-600', bg: 'bg-green-50' };
   };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#22452B] mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando materiais...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 rounded-lg shadow-md p-12 text-center">
+          <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="text-xl font-semibold text-red-900 mb-2">Erro ao carregar</h3>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button
+            onClick={loadData}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">

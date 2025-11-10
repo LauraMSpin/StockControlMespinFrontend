@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Sale, Customer, SaleItem, Product, PriceHistory } from '@/types';
-import { saleStorage, customerStorage, productStorage } from '@/lib/storage';
+import { saleService, customerService, productService } from '@/services';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function ReportsPage() {
@@ -13,15 +13,31 @@ export default function ReportsPage() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedView, setSelectedView] = useState<'dashboard' | 'priceHistory'>('dashboard');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    setSales(saleStorage.getAll());
-    setCustomers(customerStorage.getAll());
-    setProducts(productStorage.getAll());
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [salesData, customersData, productsData] = await Promise.all([
+        saleService.getAll(),
+        customerService.getAll(),
+        productService.getAll(),
+      ]);
+      setSales(salesData);
+      setCustomers(customersData);
+      setProducts(productsData);
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err);
+      setError('Não foi possível carregar os dados dos relatórios.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getFilteredSales = () => {
@@ -148,6 +164,37 @@ export default function ReportsPage() {
     };
     return labels[method] || method;
   };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#22452B] mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando relatórios...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 rounded-lg shadow-md p-12 text-center">
+          <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="text-xl font-semibold text-red-900 mb-2">Erro ao carregar</h3>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button
+            onClick={loadData}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">

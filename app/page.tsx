@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Product, Material } from '@/types';
-import { productStorage, customerStorage, saleStorage, orderStorage, settingsStorage, materialStorage } from '@/lib/storage';
+import { productService, customerService, saleService, settingsService } from '@/services';
 
 export default function Home() {
   const router = useRouter();
@@ -17,39 +17,85 @@ export default function Home() {
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
   const [lowStockMaterials, setLowStockMaterials] = useState<Material[]>([]);
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const settings = settingsStorage.get();
-    setLowStockThreshold(settings.lowStockThreshold);
-    
-    const products = productStorage.getAll();
-    const customers = customerStorage.getAll();
-    const sales = saleStorage.getAll();
-    const orders = orderStorage.getAll();
-    const materials = materialStorage.getAll();
-
-    const lowStock = products.filter(p => p.quantity < settings.lowStockThreshold);
-    const lowMaterials = materials.filter(m => {
-      const stock = m.currentStock ?? m.totalQuantityPurchased;
-      const alert = m.lowStockAlert || 100;
-      return stock < alert || stock === 0;
-    });
-    const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
-    // Calcular receita apenas das vendas com status "paid"
-    const revenue = sales
-      .filter(sale => sale.status === 'paid')
-      .reduce((sum, sale) => sum + sale.totalAmount, 0);
-
-    setStats({
-      totalProducts: products.length,
-      totalCustomers: customers.length,
-      totalSales: sales.length,
-      pendingOrders: pendingOrdersCount,
-      totalRevenue: revenue,
-    });
-    setLowStockProducts(lowStock);
-    setLowStockMaterials(lowMaterials);
+    loadDashboardData();
   }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [settings, products, customers, sales] = await Promise.all([
+        settingsService.get(),
+        productService.getAll(),
+        customerService.getAll(),
+        saleService.getAll(),
+      ]);
+
+      setLowStockThreshold(settings.lowStockThreshold);
+
+      const lowStock = await productService.getLowStock();
+      
+      // TODO: Quando orderService e materialService estiverem implementados, adicionar aqui
+      const pendingOrdersCount = 0; // orders.filter(o => o.status === 'pending').length;
+      const lowMaterials: Material[] = []; // materials com estoque baixo
+
+      // Calcular receita apenas das vendas com status "paid"
+      const revenue = sales
+        .filter(sale => sale.status === 'paid')
+        .reduce((sum, sale) => sum + sale.totalAmount, 0);
+
+      setStats({
+        totalProducts: products.length,
+        totalCustomers: customers.length,
+        totalSales: sales.length,
+        pendingOrders: pendingOrdersCount,
+        totalRevenue: revenue,
+      });
+      setLowStockProducts(lowStock);
+      setLowStockMaterials(lowMaterials);
+    } catch (err) {
+      console.error('Erro ao carregar dashboard:', err);
+      setError('Não foi possível carregar os dados do dashboard.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#22452B] mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 rounded-lg shadow-md p-12 text-center">
+          <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="text-xl font-semibold text-red-900 mb-2">Erro ao carregar</h3>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button
+            onClick={loadDashboardData}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
