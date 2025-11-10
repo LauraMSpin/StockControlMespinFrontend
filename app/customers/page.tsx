@@ -19,7 +19,8 @@ export default function CustomersPage() {
     address: '',
     city: '',
     state: '',
-    birthDate: '',
+    birthDay: '',
+    birthMonth: '',
     jarCredits: '0',
   });
 
@@ -49,6 +50,16 @@ export default function CustomersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Criar data de aniversário com ano fixo (2000) apenas para mês/dia
+    let birthDate: Date | undefined = undefined;
+    if (formData.birthDay && formData.birthMonth) {
+      const day = parseInt(formData.birthDay);
+      const month = parseInt(formData.birthMonth);
+      if (!isNaN(day) && !isNaN(month) && day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+        birthDate = new Date(2000, month - 1, day);
+      }
+    }
+    
     const customerData: Partial<Customer> = {
       name: formData.name,
       email: formData.email || undefined,
@@ -56,13 +67,20 @@ export default function CustomersPage() {
       address: formData.address || undefined,
       city: formData.city || undefined,
       state: formData.state || undefined,
-      birthDate: formData.birthDate ? new Date(formData.birthDate) : undefined,
+      birthDate,
       jarCredits: parseInt(formData.jarCredits) || 0,
     };
     
     try {
       if (editingCustomer) {
-        await customerService.update(editingCustomer.id, customerData);
+        // O backend espera o objeto completo do cliente com id e createdAt
+        const fullCustomerData: Customer = {
+          ...editingCustomer,
+          ...customerData,
+          id: editingCustomer.id,
+          createdAt: editingCustomer.createdAt,
+        };
+        await customerService.update(editingCustomer.id, fullCustomerData);
       } else {
         await customerService.create(customerData as Omit<Customer, 'id' | 'createdAt'>);
       }
@@ -79,14 +97,13 @@ export default function CustomersPage() {
   const handleEdit = (customer: Customer) => {
     setEditingCustomer(customer);
     
-    // Formatar data para input type="date"
-    let birthDateStr = '';
+    // Extrair dia e mês da data de aniversário
+    let birthDay = '';
+    let birthMonth = '';
     if (customer.birthDate) {
       const date = new Date(customer.birthDate);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      birthDateStr = `${year}-${month}-${day}`;
+      birthDay = String(date.getDate());
+      birthMonth = String(date.getMonth() + 1);
     }
     
     setFormData({
@@ -96,7 +113,8 @@ export default function CustomersPage() {
       address: customer.address || '',
       city: customer.city || '',
       state: customer.state || '',
-      birthDate: birthDateStr,
+      birthDay,
+      birthMonth,
       jarCredits: (customer.jarCredits || 0).toString(),
     });
     setShowModal(true);
@@ -131,7 +149,8 @@ export default function CustomersPage() {
       address: '',
       city: '',
       state: '',
-      birthDate: '',
+      birthDay: '',
+      birthMonth: '',
       jarCredits: '0',
     });
     setEditingCustomer(null);
@@ -319,12 +338,43 @@ export default function CustomersPage() {
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                     Data de Aniversário 🎂
                   </label>
-                  <input
-                    type="date"
-                    value={formData.birthDate}
-                    onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base"
-                  />
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Dia</label>
+                      <select
+                        value={formData.birthDay}
+                        onChange={(e) => setFormData({ ...formData, birthDay: e.target.value })}
+                        className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base"
+                      >
+                        <option value="">--</option>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                          <option key={day} value={day}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Mês</label>
+                      <select
+                        value={formData.birthMonth}
+                        onChange={(e) => setFormData({ ...formData, birthMonth: e.target.value })}
+                        className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base"
+                      >
+                        <option value="">--</option>
+                        <option value="1">Janeiro</option>
+                        <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Maio</option>
+                        <option value="6">Junho</option>
+                        <option value="7">Julho</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                      </select>
+                    </div>
+                  </div>
                   <p className="mt-1 text-xs text-gray-500">
                     Cliente receberá desconto automático em compras no mês de aniversário
                   </p>

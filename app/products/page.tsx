@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Product } from '@/types';
-import { productService, settingsService } from '@/services';
+import { Product, CategoryPrice } from '@/types';
+import { productService, settingsService, categoryPriceService } from '@/services';
 import Link from 'next/link';
 
 export default function ProductsPage() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<CategoryPrice[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isDuplicating, setIsDuplicating] = useState(false);
@@ -39,12 +40,14 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       setError(null);
-      const [settingsData, productsData] = await Promise.all([
+      const [settingsData, productsData, categoriesData] = await Promise.all([
         settingsService.get(),
-        productService.getAll()
+        productService.getAll(),
+        categoryPriceService.getAll()
       ]);
       setLowStockThreshold(settingsData.lowStockThreshold);
       setProducts(productsData);
+      setCategories(categoriesData);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       setError('Não foi possível carregar os produtos. Verifique a conexão com o servidor.');
@@ -467,15 +470,34 @@ export default function ProductsPage() {
                       const newCategory = e.target.value;
                       setFormData({ ...formData, category: newCategory });
                       
-                      // TODO: Buscar preço da categoria quando categoryPriceService estiver implementado
+                      // Buscar preço da categoria e aplicar automaticamente
+                      const categoryPrice = categories.find(c => c.categoryName === newCategory);
+                      if (categoryPrice && !editingProduct) {
+                        setFormData(prev => ({ ...prev, price: categoryPrice.price.toString() }));
+                      }
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Selecione uma categoria</option>
-                    <option value="Vela Aromatizada">Vela Aromatizada</option>
-                    <option value="Vela Decorativa">Vela Decorativa</option>
-                    <option value="Difusor">Difusor</option>
+                    {categories.length > 0 ? (
+                      categories.map(cat => (
+                        <option key={cat.id} value={cat.categoryName}>
+                          {cat.categoryName} (R$ {cat.price.toFixed(2)})
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Vela Aromatizada">Vela Aromatizada</option>
+                        <option value="Vela Decorativa">Vela Decorativa</option>
+                        <option value="Difusor">Difusor</option>
+                      </>
+                    )}
                   </select>
+                  {categories.length === 0 && (
+                    <p className="text-xs text-blue-500 mt-1">
+                      💡 Dica: Cadastre categorias com preços em "Preço por Categoria"
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -517,7 +539,11 @@ export default function ProductsPage() {
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  {/* TODO: Mostrar preço da categoria quando categoryPriceService estiver implementado */}
+                  {formData.category && categories.find(c => c.categoryName === formData.category) && (
+                    <p className="text-xs text-green-600 mt-1">
+                      💰 Preço sugerido da categoria: R$ {categories.find(c => c.categoryName === formData.category)?.price.toFixed(2)}
+                    </p>
+                  )}
                 </div>
 
                 <div>

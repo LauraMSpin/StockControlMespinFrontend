@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Order, Product, Customer } from '@/types';
 import { orderService, productService, customerService } from '@/services';
 import { migrateOrders } from '@/lib/migrations';
+import CustomerSelector from '@/components/CustomerSelector';
 
 export default function OrdersPage() {
   const searchParams = useSearchParams();
@@ -564,24 +565,14 @@ export default function OrdersPage() {
             </h2>
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cliente *
-                  </label>
-                  <select
-                    required
-                    value={formData.customerId}
-                    onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                  >
-                    <option value="">Selecione um cliente</option>
-                    {customers.map(customer => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <CustomerSelector
+                  value={formData.customerId}
+                  onChange={(customerId) => setFormData({ ...formData, customerId })}
+                  customers={customers}
+                  onCustomerAdded={loadData}
+                  label="Cliente"
+                  required={true}
+                />
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Material } from '@/types';
-import { materialService } from '@/services';
+import { Material, CategoryPrice } from '@/types';
+import { materialService, categoryPriceService } from '@/services';
 
 export default function MaterialsPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [categories, setCategories] = useState<CategoryPrice[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,8 +31,12 @@ export default function MaterialsPage() {
     try {
       setLoading(true);
       setError(null);
-      const materialsData = await materialService.getAll();
+      const [materialsData, categoriesData] = await Promise.all([
+        materialService.getAll(),
+        categoryPriceService.getAll()
+      ]);
       setMaterials(materialsData);
+      setCategories(categoriesData);
     } catch (err) {
       console.error('Erro ao carregar materiais:', err);
       setError('Não foi possível carregar os materiais.');
@@ -417,13 +422,28 @@ export default function MaterialsPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#22452B] focus:border-transparent"
                   >
                     <option value="">Selecione...</option>
-                    <option value="Cera">Cera</option>
-                    <option value="Essência">Essência</option>
-                    <option value="Embalagem">Embalagem</option>
-                    <option value="Decoração">Decoração</option>
-                    <option value="Pavio">Pavio</option>
-                    <option value="Outro">Outro</option>
+                    {categories.length > 0 ? (
+                      categories.map(cat => (
+                        <option key={cat.id} value={cat.categoryName}>
+                          {cat.categoryName}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Cera">Cera</option>
+                        <option value="Essência">Essência</option>
+                        <option value="Embalagem">Embalagem</option>
+                        <option value="Decoração">Decoração</option>
+                        <option value="Pavio">Pavio</option>
+                        <option value="Outro">Outro</option>
+                      </>
+                    )}
                   </select>
+                  {categories.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      💡 Dica: Cadastre categorias em "Preço por Categoria" para usar aqui
+                    </p>
+                  )}
                 </div>
 
                 <div>

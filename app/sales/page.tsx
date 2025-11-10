@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Sale, SaleItem, Product, Customer, Settings } from '@/types';
 import { saleService, productService, customerService, settingsService } from '@/services';
+import CustomerSelector from '@/components/CustomerSelector';
 
 export default function SalesPage() {
   const searchParams = useSearchParams();
@@ -974,39 +975,30 @@ export default function SalesPage() {
             </h2>
             
             {/* Seleção de Cliente */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Cliente *
-              </label>
-              <select
-                value={selectedCustomer}
-                onChange={(e) => handleCustomerChange(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="">Selecione um cliente</option>
-                {customers.map(customer => {
-                  const isBirthday = customer.birthDate && checkBirthdayMonth(customer.id);
-                  return (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} {isBirthday ? '🎂' : ''}
-                    </option>
-                  );
-                })}
-              </select>
-              {isBirthdayDiscount && (
-                <div className="mt-2 p-3 bg-pink-50 border border-pink-200 rounded-lg flex items-center gap-2">
-                  <span className="text-2xl">🎂</span>
-                  <div>
-                    <p className="text-sm font-semibold text-pink-800">
-                      Mês de aniversário do cliente!
-                    </p>
-                    <p className="text-xs text-pink-700">
-                      Desconto de {birthdayDiscountPercentage}% aplicado automaticamente
-                    </p>
-                  </div>
+            <CustomerSelector
+              value={selectedCustomer}
+              onChange={handleCustomerChange}
+              customers={customers}
+              onCustomerAdded={loadData}
+              label="Cliente"
+              required={true}
+              showBirthdayIcon={true}
+              checkBirthdayMonth={checkBirthdayMonth}
+              className="mb-6"
+            />
+            {isBirthdayDiscount && (
+              <div className="mt-2 p-3 bg-pink-50 border border-pink-200 rounded-lg flex items-center gap-2 mb-6">
+                <span className="text-2xl">🎂</span>
+                <div>
+                  <p className="text-sm font-semibold text-pink-800">
+                    Mês de aniversário do cliente!
+                  </p>
+                  <p className="text-xs text-pink-700">
+                    Desconto de {birthdayDiscountPercentage}% aplicado automaticamente
+                  </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Adicionar Produtos */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">

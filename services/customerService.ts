@@ -28,7 +28,7 @@ export const customerService = {
   },
 
   // Atualizar cliente
-  update: async (id: string, customer: Partial<Customer>): Promise<void> => {
+  update: async (id: string, customer: Customer): Promise<void> => {
     return api.put<void>(`/Customers/${id}`, customer);
   },
 
