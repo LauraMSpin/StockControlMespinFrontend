@@ -112,9 +112,19 @@ export default function MaterialsPage() {
       try {
         await materialService.delete(id);
         await loadData();
-      } catch (err) {
+      } catch (err: any) {
         console.error('Erro ao excluir material:', err);
-        alert('Não foi possível excluir o material. Tente novamente.');
+        
+        // Check if it's a conflict error (409) - material is in use
+        if (err.response?.status === 409) {
+          const productsCount = err.response?.data?.productsCount || 'alguns';
+          alert(
+            `Não é possível excluir este material porque ele está sendo usado em ${productsCount} produto(s).\n\n` +
+            'Para excluir este material, primeiro remova-o dos custos de produção dos produtos.'
+          );
+        } else {
+          alert('Não foi possível excluir o material. Tente novamente.');
+        }
       }
     }
   };
