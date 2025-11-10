@@ -26,6 +26,8 @@ export default function SalesPage() {
   const [pendingStatusChange, setPendingStatusChange] = useState<{ saleId: string; newStatus: Sale['status'] } | null>(null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [isBirthdayDiscount, setIsBirthdayDiscount] = useState(false);
+  const [birthdayDiscountPercentage, setBirthdayDiscountPercentage] = useState('0');
+  const [additionalDiscountPercentage, setAdditionalDiscountPercentage] = useState('0');
   const [jarCreditsUsed, setJarCreditsUsed] = useState(0);
   const [jarDiscountAmount, setJarDiscountAmount] = useState(0);
 
@@ -66,7 +68,7 @@ export default function SalesPage() {
     const settings = settingsStorage.get();
     
     if (settings.birthdayDiscount > 0 && checkBirthdayMonth(customerId)) {
-      setDiscountPercentage(settings.birthdayDiscount.toString());
+      setBirthdayDiscountPercentage(settings.birthdayDiscount.toString());
       setIsBirthdayDiscount(true);
       return true;
     }
@@ -124,7 +126,7 @@ export default function SalesPage() {
     if (!editingSale) {
       const hasDiscount = applyBirthdayDiscount(customerId);
       if (!hasDiscount) {
-        setDiscountPercentage('0');
+        setBirthdayDiscountPercentage('0');
         setIsBirthdayDiscount(false);
       }
     }
@@ -137,12 +139,15 @@ export default function SalesPage() {
     if (!product) return;
 
     const qty = parseInt(quantity);
-    if (qty > product.quantity) {
-      alert('Quantidade indisponível em estoque!');
+    const existingItem = saleItems.find(item => item.productId === selectedProduct);
+    
+    // Verificar se a quantidade total (existente + nova) ultrapassa o estoque
+    const totalQuantity = existingItem ? existingItem.quantity + qty : qty;
+    
+    if (totalQuantity > product.quantity) {
+      alert(`Quantidade indisponível em estoque! Disponível: ${product.quantity}, já adicionado: ${existingItem?.quantity || 0}`);
       return;
     }
-
-    const existingItem = saleItems.find(item => item.productId === selectedProduct);
     
     if (existingItem) {
       setSaleItems(saleItems.map(item =>
@@ -177,10 +182,20 @@ export default function SalesPage() {
     return saleItems.reduce((sum, item) => sum + item.totalPrice, 0);
   };
 
-  const calculateDiscount = () => {
-    const discount = parseFloat(discountPercentage) || 0;
+  const calculateBirthdayDiscount = () => {
+    const discount = parseFloat(birthdayDiscountPercentage) || 0;
     if (discount < 0 || discount > 100) return 0;
     return (calculateSubtotal() * discount) / 100;
+  };
+
+  const calculateAdditionalDiscount = () => {
+    const discount = parseFloat(additionalDiscountPercentage) || 0;
+    if (discount < 0 || discount > 100) return 0;
+    return (calculateSubtotal() * discount) / 100;
+  };
+
+  const calculateDiscount = () => {
+    return calculateBirthdayDiscount() + calculateAdditionalDiscount();
   };
 
   const calculateTotal = () => {
@@ -205,10 +220,13 @@ export default function SalesPage() {
       return;
     }
 
-    // Validar desconto
-    const discount = parseFloat(discountPercentage) || 0;
-    if (discount < 0 || discount > 100) {
-      alert('O desconto deve estar entre 0% e 100%!');
+    // Validar descontos
+    const birthdayDiscount = parseFloat(birthdayDiscountPercentage) || 0;
+    const additionalDiscount = parseFloat(additionalDiscountPercentage) || 0;
+    const totalDiscountPercentage = birthdayDiscount + additionalDiscount;
+    
+    if (birthdayDiscount < 0 || birthdayDiscount > 100 || additionalDiscount < 0 || additionalDiscount > 100) {
+      alert('Os descontos devem estar entre 0% e 100%!');
       return;
     }
 
@@ -228,18 +246,32 @@ export default function SalesPage() {
       saleDateObj.setHours(12, 0, 0, 0);
     }
 
+    // Criar nota com detalhamento dos descontos se houver múltiplos
+    let saleNotes = notes;
+    if (birthdayDiscount > 0 && additionalDiscount > 0) {
+      const discountDetail = `\n[Descontos: 🎂 Aniversário ${birthdayDiscount}% + 💰 Adicional ${additionalDiscount}%]`;
+      saleNotes = notes ? notes + discountDetail : discountDetail.trim();
+    } else if (birthdayDiscount > 0) {
+      const discountDetail = `\n[Desconto: 🎂 Aniversário ${birthdayDiscount}%]`;
+      saleNotes = notes ? notes + discountDetail : discountDetail.trim();
+    }
+    if (jarCreditsUsed > 0) {
+      const jarDetail = `\n[🫙 ${jarCreditsUsed} ${jarCreditsUsed === 1 ? 'pote usado' : 'potes usados'}: -R$ ${jarDiscountAmount.toFixed(2)}]`;
+      saleNotes = saleNotes ? saleNotes + jarDetail : jarDetail.trim();
+    }
+
     const newSale: Omit<Sale, 'id'> = {
       customerId: customer.id,
       customerName: customer.name,
       items: saleItems,
       subtotal: subtotal,
-      discountPercentage: discount,
+      discountPercentage: totalDiscountPercentage,
       discountAmount: discountAmount,
       totalAmount: total,
       saleDate: saleDateObj,
       status: saleStatus,
       paymentMethod: saleStatus === 'paid' ? paymentMethod as 'cash' | 'pix' | 'debit' | 'credit' : undefined,
-      notes: notes
+      notes: saleNotes
     };
 
     try {
@@ -277,7 +309,8 @@ export default function SalesPage() {
     setSelectedProduct('');
     setQuantity('1');
     setNotes('');
-    setDiscountPercentage('0');
+    setBirthdayDiscountPercentage('0');
+    setAdditionalDiscountPercentage('0');
     setSaleStatus('pending');
     setPaymentMethod('');
     
@@ -306,7 +339,12 @@ export default function SalesPage() {
     setSelectedCustomer(sale.customerId);
     setSaleItems([...sale.items]);
     setNotes(sale.notes || '');
-    setDiscountPercentage(sale.discountPercentage.toString());
+    
+    // Carregar descontos (mantém apenas o valor total para compatibilidade com vendas antigas)
+    setBirthdayDiscountPercentage('0');
+    setAdditionalDiscountPercentage(sale.discountPercentage.toString());
+    setIsBirthdayDiscount(false);
+    
     setSaleStatus(sale.status);
     setPaymentMethod(sale.paymentMethod || '');
     
@@ -336,10 +374,13 @@ export default function SalesPage() {
       return;
     }
 
-    // Validar desconto
-    const discount = parseFloat(discountPercentage) || 0;
-    if (discount < 0 || discount > 100) {
-      alert('O desconto deve estar entre 0% e 100%!');
+    // Validar descontos
+    const birthdayDiscount = parseFloat(birthdayDiscountPercentage) || 0;
+    const additionalDiscount = parseFloat(additionalDiscountPercentage) || 0;
+    const totalDiscountPercentage = birthdayDiscount + additionalDiscount;
+    
+    if (birthdayDiscount < 0 || birthdayDiscount > 100 || additionalDiscount < 0 || additionalDiscount > 100) {
+      alert('Os descontos devem estar entre 0% e 100%!');
       return;
     }
 
@@ -358,18 +399,32 @@ export default function SalesPage() {
       saleDateObj = editingSale.saleDate;
     }
 
+    // Criar nota com detalhamento dos descontos se houver múltiplos
+    let saleNotes = notes;
+    if (birthdayDiscount > 0 && additionalDiscount > 0) {
+      const discountDetail = `\n[Descontos: 🎂 Aniversário ${birthdayDiscount}% + 💰 Adicional ${additionalDiscount}%]`;
+      saleNotes = notes ? notes + discountDetail : discountDetail.trim();
+    } else if (birthdayDiscount > 0) {
+      const discountDetail = `\n[Desconto: 🎂 Aniversário ${birthdayDiscount}%]`;
+      saleNotes = notes ? notes + discountDetail : discountDetail.trim();
+    }
+    if (jarCreditsUsed > 0) {
+      const jarDetail = `\n[🫙 ${jarCreditsUsed} ${jarCreditsUsed === 1 ? 'pote usado' : 'potes usados'}: -R$ ${jarDiscountAmount.toFixed(2)}]`;
+      saleNotes = saleNotes ? saleNotes + jarDetail : jarDetail.trim();
+    }
+
     const updatedSale: Partial<Sale> = {
       customerId: customer.id,
       customerName: customer.name,
       items: saleItems,
       subtotal: subtotal,
-      discountPercentage: discount,
+      discountPercentage: totalDiscountPercentage,
       discountAmount: discountAmount,
       totalAmount: total,
       saleDate: saleDateObj,
       status: saleStatus,
       paymentMethod: saleStatus === 'paid' ? paymentMethod as 'cash' | 'pix' | 'debit' | 'credit' : undefined,
-      notes: notes
+      notes: saleNotes
     };
 
     try {
@@ -899,7 +954,7 @@ export default function SalesPage() {
                       Mês de aniversário do cliente!
                     </p>
                     <p className="text-xs text-pink-700">
-                      Desconto de {discountPercentage}% aplicado automaticamente
+                      Desconto de {birthdayDiscountPercentage}% aplicado automaticamente
                     </p>
                   </div>
                 </div>
@@ -984,7 +1039,9 @@ export default function SalesPage() {
                 <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
                   {(() => {
                     const subtotal = calculateSubtotal();
-                    const percentDiscount = calculateDiscount();
+                    const birthdayDiscount = calculateBirthdayDiscount();
+                    const additionalDiscount = calculateAdditionalDiscount();
+                    const percentDiscount = birthdayDiscount + additionalDiscount;
                     const total = calculateTotal();
                     const totalDiscounts = percentDiscount + jarDiscountAmount;
 
@@ -997,42 +1054,45 @@ export default function SalesPage() {
                         
                         {(percentDiscount > 0 || jarDiscountAmount > 0) && (
                           <div className="border-t pt-2 space-y-1">
-                            <div className="text-sm font-semibold text-gray-700 mb-1">Descontos aplicados:</div>
+                            <div className="text-sm font-semibold text-gray-700 mb-2">Descontos aplicados:</div>
                             
-                            {percentDiscount > 0 && (
-                              <div className={`flex justify-between text-sm pl-4 ${isBirthdayDiscount ? 'text-pink-600 bg-pink-50 -ml-4 -mr-4 px-8 py-1.5 rounded' : 'text-orange-600'}`}>
+                            {birthdayDiscount > 0 && (
+                              <div className="flex justify-between text-sm text-pink-600 bg-pink-50 py-1.5 px-4 -mx-4 rounded">
                                 <span className="flex items-center gap-1.5">
-                                  {isBirthdayDiscount ? (
-                                    <>
-                                      <span className="text-base">🎂</span>
-                                      <span className="font-semibold">Desconto de Aniversário</span>
-                                      <span className="text-xs bg-pink-200 px-1.5 py-0.5 rounded-full">especial</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span>💰</span>
-                                      <span>Desconto</span>
-                                    </>
-                                  )}
-                                  <span className="font-normal">({discountPercentage}%):</span>
+                                  <span className="text-base">🎂</span>
+                                  <span className="font-semibold">Desconto de Aniversário</span>
+                                  <span className="text-xs bg-pink-200 px-1.5 py-0.5 rounded-full">especial</span>
+                                  <span className="font-normal">({birthdayDiscountPercentage}%):</span>
                                 </span>
-                                <span className="font-semibold">- R$ {percentDiscount.toFixed(2)}</span>
+                                <span className="font-semibold whitespace-nowrap">- R$ {birthdayDiscount.toFixed(2)}</span>
+                              </div>
+                            )}
+                            
+                            {additionalDiscount > 0 && (
+                              <div className="flex justify-between text-sm text-orange-600 px-4 -mx-4">
+                                <span className="flex items-center gap-1.5">
+                                  <span>💰</span>
+                                  <span>Desconto Adicional</span>
+                                  <span className="font-normal">({additionalDiscountPercentage}%):</span>
+                                </span>
+                                <span className="font-semibold whitespace-nowrap">- R$ {additionalDiscount.toFixed(2)}</span>
                               </div>
                             )}
                             
                             {jarDiscountAmount > 0 && (
-                              <div className="flex justify-between text-sm text-green-600 pl-4">
-                                <span>
-                                  🫙 Devolução de potes ({jarCreditsUsed} {jarCreditsUsed === 1 ? 'pote' : 'potes'}):
+                              <div className="flex justify-between text-sm text-green-600 px-4 -mx-4">
+                                <span className="flex items-center gap-1.5">
+                                  <span>🫙</span>
+                                  <span>Devolução de potes ({jarCreditsUsed} {jarCreditsUsed === 1 ? 'pote' : 'potes'}):</span>
                                 </span>
-                                <span className="font-semibold">- R$ {jarDiscountAmount.toFixed(2)}</span>
+                                <span className="font-semibold whitespace-nowrap">- R$ {jarDiscountAmount.toFixed(2)}</span>
                               </div>
                             )}
                             
                             {totalDiscounts > 0 && (
-                              <div className="flex justify-between text-sm text-gray-600 font-semibold pl-4 pt-1 border-t">
+                              <div className="flex justify-between text-sm text-gray-600 font-semibold px-4 -mx-4 pt-2 mt-1 border-t">
                                 <span>Total em descontos:</span>
-                                <span>- R$ {totalDiscounts.toFixed(2)}</span>
+                                <span className="whitespace-nowrap">- R$ {totalDiscounts.toFixed(2)}</span>
                               </div>
                             )}
                           </div>
@@ -1049,57 +1109,63 @@ export default function SalesPage() {
               </div>
             )}
 
-            {/* Desconto Percentual */}
+            {/* Descontos */}
             {saleItems.length > 0 && (
-              <div className={`mb-6 rounded-lg p-4 border-2 ${isBirthdayDiscount ? 'bg-pink-50 border-pink-300' : 'bg-white border-gray-200'}`}>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  {isBirthdayDiscount ? (
-                    <>
+              <div className="mb-6 space-y-4">
+                {/* Desconto de Aniversário */}
+                {isBirthdayDiscount && (
+                  <div className="rounded-lg p-4 border-2 bg-pink-50 border-pink-300">
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                       <span className="text-2xl">🎂</span>
                       <span className="text-pink-700 font-semibold">Desconto de Aniversário</span>
                       <span className="text-xs font-normal text-white bg-pink-500 px-2 py-0.5 rounded-full">
                         ESPECIAL
                       </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-xl">💰</span>
-                      <span>Desconto Adicional (%)</span>
-                    </>
-                  )}
-                </label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    value={discountPercentage}
-                    onChange={(e) => {
-                      setDiscountPercentage(e.target.value);
-                      // Se mudar manualmente, desativar flag de desconto automático
-                      if (isBirthdayDiscount) {
-                        setIsBirthdayDiscount(false);
-                      }
-                    }}
-                    className={`w-32 px-4 py-2 border-2 rounded-lg focus:ring-2 focus:border-transparent ${
-                      isBirthdayDiscount 
-                        ? 'border-pink-300 focus:ring-pink-500 bg-white' 
-                        : 'border-gray-300 focus:ring-blue-500'
-                    }`}
-                    placeholder="0"
-                  />
-                  <span className="text-sm text-gray-600">%</span>
-                  {isBirthdayDiscount && (
-                    <div className="flex-1 text-xs text-pink-700 bg-pink-100 px-3 py-2 rounded border border-pink-200">
-                      🎉 Este cliente está de aniversário este mês! Desconto automático aplicado.
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={birthdayDiscountPercentage}
+                        onChange={(e) => setBirthdayDiscountPercentage(e.target.value)}
+                        className="w-32 px-4 py-2 border-2 border-pink-300 focus:ring-pink-500 bg-white rounded-lg focus:ring-2 focus:border-transparent"
+                        placeholder="0"
+                      />
+                      <span className="text-sm text-gray-600">%</span>
+                      <div className="flex-1 text-xs text-pink-700 bg-pink-100 px-3 py-2 rounded border border-pink-200">
+                        🎉 Este cliente está de aniversário este mês! Desconto automático aplicado.
+                      </div>
                     </div>
-                  )}
+                  </div>
+                )}
+
+                {/* Desconto Adicional */}
+                <div className="rounded-lg p-4 border-2 bg-white border-gray-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <span className="text-xl">💰</span>
+                    <span>Desconto Adicional (%)</span>
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={additionalDiscountPercentage}
+                      onChange={(e) => setAdditionalDiscountPercentage(e.target.value)}
+                      className="w-32 px-4 py-2 border-2 border-gray-300 focus:ring-blue-500 rounded-lg focus:ring-2 focus:border-transparent"
+                      placeholder="0"
+                    />
+                    <span className="text-sm text-gray-600">%</span>
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    {jarCreditsUsed > 0 && `🫙 ${jarCreditsUsed} ${jarCreditsUsed === 1 ? 'pote será usado' : 'potes serão usados'} automaticamente. `}
+                    {isBirthdayDiscount && 'Este desconto será somado ao desconto de aniversário. '}
+                    O resumo completo dos descontos aparecerá abaixo.
+                  </p>
                 </div>
-                <p className="mt-2 text-xs text-gray-500">
-                  {jarCreditsUsed > 0 && `🫙 ${jarCreditsUsed} ${jarCreditsUsed === 1 ? 'pote será usado' : 'potes serão usados'} automaticamente. `}
-                  O resumo completo dos descontos aparecerá abaixo.
-                </p>
               </div>
             )}
 
