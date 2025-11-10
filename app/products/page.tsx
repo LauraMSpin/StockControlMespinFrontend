@@ -94,7 +94,15 @@ export default function ProductsPage() {
     
     try {
       if (editingProduct) {
-        await productService.update(editingProduct.id, productData);
+        // O backend espera o objeto completo do produto com id, createdAt e updatedAt
+        const fullProductData: Product = {
+          ...editingProduct,
+          ...productData,
+          id: editingProduct.id,
+          createdAt: editingProduct.createdAt,
+          updatedAt: editingProduct.updatedAt,
+        };
+        await productService.update(editingProduct.id, fullProductData);
       } else {
         await productService.create(productData as Omit<Product, 'id' | 'createdAt' | 'updatedAt'>);
       }

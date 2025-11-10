@@ -103,6 +103,8 @@ export interface Order {
   status: 'pending' | 'in_production' | 'ready_for_delivery' | 'delivered' | 'cancelled';
   paymentMethod?: 'cash' | 'pix' | 'debit' | 'credit';
   notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Settings {

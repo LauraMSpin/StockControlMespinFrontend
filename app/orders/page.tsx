@@ -78,7 +78,9 @@ export default function OrdersPage() {
 
     try {
       if (editingOrder) {
-        const updates: any = {
+        // O backend espera o objeto completo com id
+        const fullOrderData: Order = {
+          ...editingOrder,
           customerId: formData.customerId,
           customerName: customer.name,
           productId: formData.productId,
@@ -94,10 +96,10 @@ export default function OrdersPage() {
 
         // Se está mudando para delivered e ainda não tem data de entrega, adicionar
         if (editingOrder.status !== 'delivered' && formData.status === 'delivered' && !editingOrder.deliveredDate) {
-          updates.deliveredDate = new Date();
+          fullOrderData.deliveredDate = new Date();
         }
         
-        await orderService.update(editingOrder.id, updates);
+        await orderService.update(editingOrder.id, fullOrderData);
         
         // Se mudou para delivered, mostrar mensagem
         if (editingOrder.status !== 'delivered' && formData.status === 'delivered') {

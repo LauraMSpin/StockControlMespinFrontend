@@ -28,7 +28,7 @@ export const materialService = {
   },
 
   // Atualizar material
-  update: async (id: string, material: Partial<Material>): Promise<void> => {
+  update: async (id: string, material: Material): Promise<void> => {
     return api.put<void>(`/Materials/${id}`, material);
   },
 

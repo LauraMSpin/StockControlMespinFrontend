@@ -23,12 +23,12 @@ export const orderService = {
   },
 
   // Criar encomenda
-  create: async (order: Omit<Order, 'id'>): Promise<Order> => {
+  create: async (order: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>): Promise<Order> => {
     return api.post<Order>('/Orders', order);
   },
 
   // Atualizar encomenda
-  update: async (id: string, order: Partial<Order>): Promise<void> => {
+  update: async (id: string, order: Order): Promise<void> => {
     return api.put<void>(`/Orders/${id}`, order);
   },
 

@@ -28,7 +28,7 @@ export const productService = {
   },
 
   // Atualizar produto
-  update: async (id: string, product: Partial<Product>): Promise<void> => {
+  update: async (id: string, product: Product): Promise<void> => {
     return api.put<void>(`/Products/${id}`, product);
   },
 

@@ -69,7 +69,15 @@ export default function MaterialsPage() {
 
     try {
       if (editingMaterial) {
-        await materialService.update(editingMaterial.id, materialData);
+        // O backend espera o objeto completo do material com id, createdAt e updatedAt
+        const fullMaterialData: Material = {
+          ...editingMaterial,
+          ...materialData,
+          id: editingMaterial.id,
+          createdAt: editingMaterial.createdAt,
+          updatedAt: editingMaterial.updatedAt,
+        };
+        await materialService.update(editingMaterial.id, fullMaterialData);
       } else {
         await materialService.create(materialData as Omit<Material, 'id' | 'createdAt' | 'updatedAt'>);
       }
@@ -260,21 +268,7 @@ export default function MaterialsPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Investimento Total</p>
-              <p className="text-2xl font-bold text-[#AF6138]">
-                R$ {materials.reduce((sum, m) => sum + m.totalCostPaid, 0).toFixed(2)}
-              </p>
-            </div>
-            <div className="p-3 bg-[#FFF9F0] rounded-full">
-              <svg className="w-6 h-6 text-[#AF6138]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
+        {/* Investimento summary removed - materials tab now focuses on defining materials and cost per unit */}
       </div>
 
       {materials.length === 0 ? (
@@ -306,13 +300,7 @@ export default function MaterialsPage() {
                   Estoque Atual
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Qtd. Comprada
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Custo/Unidade
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Investimento Total
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -346,18 +334,8 @@ export default function MaterialsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-600">
-                        {material.totalQuantityPurchased} {material.unit}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm text-gray-900">
                         R$ {material.costPerUnit.toFixed(4)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-semibold text-[#AF6138]">
-                        R$ {material.totalCostPaid.toFixed(2)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -465,6 +443,8 @@ export default function MaterialsPage() {
                   </select>
                 </div>
 
+                {/* Removed: Quantidade Comprada (we now define cost per unit directly) */}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Quantidade Comprada (para cálculo) *
@@ -556,7 +536,7 @@ export default function MaterialsPage() {
                   />
                 </div>
 
-                {/* Custo por unidade calculado */}
+                {/* Custo por unidade calculado automaticamente */}
                 {formData.totalQuantityPurchased && formData.totalCostPaid && parseFloat(formData.totalQuantityPurchased) > 0 && (
                   <div className="md:col-span-2 bg-[#EEF2E8] p-4 rounded-lg">
                     <div className="flex justify-between items-center">
