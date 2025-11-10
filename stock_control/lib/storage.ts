@@ -340,6 +340,7 @@ const DEFAULT_SETTINGS: Settings = {
   companyEmail: '',
   companyAddress: '',
   birthdayDiscount: 0,
+  jarDiscount: 0,
 };
 
 export const settingsStorage = {

@@ -12,6 +12,7 @@ export default function SettingsPage() {
     companyEmail: '',
     companyAddress: '',
     birthdayDiscount: 0,
+    jarDiscount: 0,
   });
   const [saved, setSaved] = useState(false);
 
@@ -96,7 +97,7 @@ export default function SettingsPage() {
                   max="100"
                   step="0.1"
                   required
-                  value={settings.birthdayDiscount}
+                  value={settings.birthdayDiscount || 0}
                   onChange={(e) => setSettings({ ...settings, birthdayDiscount: parseFloat(e.target.value) || 0 })}
                   className="w-32 px-4 py-2 border border-pink-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                 />
@@ -104,6 +105,37 @@ export default function SettingsPage() {
               </div>
               <p className="mt-2 text-xs text-pink-700">
                 Este desconto será aplicado automaticamente em todas as vendas de clientes durante o mês de aniversário deles. Configure 0 para desativar.
+              </p>
+            </div>
+          </div>
+
+          {/* Desconto por Pote Devolvido */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-2xl">🫙</span>
+              Desconto por Pote Devolvido
+            </h2>
+            
+            <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Valor do Desconto por Pote (R$) *
+              </label>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-600">R$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  value={settings.jarDiscount || 0}
+                  onChange={(e) => setSettings({ ...settings, jarDiscount: parseFloat(e.target.value) || 0 })}
+                  className="w-32 px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+              <p className="mt-2 text-xs text-green-700">
+                <strong>Sistema 1:1</strong> - Para cada vela comprada, 1 crédito de pote será usado automaticamente. 
+                Exemplo: Cliente com 8 potes compra 2 velas → usa 2 créditos (fica com 6). 
+                Se comprar 1 vela → usa 1 crédito. Configure R$ 0,00 para desativar.
               </p>
             </div>
           </div>

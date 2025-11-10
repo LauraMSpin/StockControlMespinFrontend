@@ -26,6 +26,8 @@ export default function SalesPage() {
   const [pendingStatusChange, setPendingStatusChange] = useState<{ saleId: string; newStatus: Sale['status'] } | null>(null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [isBirthdayDiscount, setIsBirthdayDiscount] = useState(false);
+  const [jarCreditsUsed, setJarCreditsUsed] = useState(0);
+  const [jarDiscountAmount, setJarDiscountAmount] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -35,6 +37,11 @@ export default function SalesPage() {
       setShowModal(true);
     }
   }, [searchParams]);
+
+  // Recalcular desconto de potes quando itens mudarem
+  useEffect(() => {
+    calculateJarDiscount();
+  }, [saleItems, selectedCustomer, customers]);
 
   const loadData = () => {
     setSales(saleStorage.getAll());
@@ -67,6 +74,44 @@ export default function SalesPage() {
     return false;
   };
 
+  // Calcular desconto de potes automaticamente
+  const calculateJarDiscount = () => {
+    if (!selectedCustomer || saleItems.length === 0) {
+      setJarCreditsUsed(0);
+      setJarDiscountAmount(0);
+      return;
+    }
+
+    const customer = customers.find(c => c.id === selectedCustomer);
+    if (!customer || (customer.jarCredits || 0) === 0) {
+      setJarCreditsUsed(0);
+      setJarDiscountAmount(0);
+      return;
+    }
+
+    const settings = settingsStorage.get();
+    if (settings.jarDiscount <= 0) {
+      setJarCreditsUsed(0);
+      setJarDiscountAmount(0);
+      return;
+    }
+
+    // Contar quantas velas (total de itens) - proporção 1:1
+    const totalCandlesInSale = saleItems.reduce((sum, item) => sum + item.quantity, 0);
+    
+    // Créditos disponíveis do cliente
+    const availableCredits = customer.jarCredits || 0;
+    
+    // Usar no máximo 1 crédito por vela (1:1)
+    const creditsToUse = Math.min(totalCandlesInSale, availableCredits);
+    
+    // Calcular desconto total
+    const totalJarDiscount = creditsToUse * settings.jarDiscount;
+    
+    setJarCreditsUsed(creditsToUse);
+    setJarDiscountAmount(totalJarDiscount);
+  };
+
   // Handler para mudança de cliente
   const handleCustomerChange = (customerId: string) => {
     setSelectedCustomer(customerId);
@@ -79,6 +124,9 @@ export default function SalesPage() {
         setIsBirthdayDiscount(false);
       }
     }
+    
+    // Recalcular desconto de potes
+    setTimeout(() => calculateJarDiscount(), 0);
   };
 
   const addItemToSale = () => {
@@ -135,7 +183,7 @@ export default function SalesPage() {
   };
 
   const calculateTotal = () => {
-    return calculateSubtotal() - calculateDiscount();
+    return calculateSubtotal() - calculateDiscount() - jarDiscountAmount;
   };
 
   const handleSubmitSale = () => {
@@ -196,10 +244,23 @@ export default function SalesPage() {
     try {
       saleStorage.add(newSale);
       
+      // Subtrair créditos de potes do cliente (apenas se não for cancelada)
+      if (saleStatus !== 'cancelled' && jarCreditsUsed > 0) {
+        const currentCredits = customer.jarCredits || 0;
+        const newCredits = Math.max(0, currentCredits - jarCreditsUsed);
+        customerStorage.update(customer.id, { jarCredits: newCredits });
+      }
+      
       resetForm();
       loadData();
       setShowModal(false);
-      alert('Venda realizada com sucesso!');
+      
+      let message = 'Venda realizada com sucesso!';
+      if (jarCreditsUsed > 0) {
+        message += `\n\n🫙 ${jarCreditsUsed} crédito${jarCreditsUsed > 1 ? 's' : ''} de pote${jarCreditsUsed > 1 ? 's' : ''} utilizado${jarCreditsUsed > 1 ? 's' : ''}!`;
+        message += `\nDesconto aplicado: R$ ${jarDiscountAmount.toFixed(2)}`;
+      }
+      alert(message);
     } catch (error) {
       if (error instanceof Error) {
         alert(`Erro ao criar venda: ${error.message}`);
@@ -229,6 +290,8 @@ export default function SalesPage() {
     
     setEditingSale(null);
     setIsBirthdayDiscount(false);
+    setJarCreditsUsed(0);
+    setJarDiscountAmount(0);
   };
 
   const handleEditSale = (sale: Sale) => {
@@ -941,16 +1004,31 @@ export default function SalesPage() {
                       const productionCost = product?.productionCost || 0;
                       return sum + (productionCost * item.quantity);
                     }, 0);
+                    const subtotal = calculateSubtotal();
+                    const percentDiscount = calculateDiscount();
                     const total = calculateTotal();
                     const totalProfit = total - totalCost;
                     const profitMargin = total > 0 ? (totalProfit / total) * 100 : 0;
 
                     return (
                       <div className="space-y-1">
-                        <div className="text-xl font-bold text-gray-900">
+                        <div className="text-lg text-gray-700">
+                          Subtotal: R$ {subtotal.toFixed(2)}
+                        </div>
+                        {percentDiscount > 0 && (
+                          <div className="text-sm text-red-600">
+                            Desconto ({discountPercentage}%): - R$ {percentDiscount.toFixed(2)}
+                          </div>
+                        )}
+                        {jarDiscountAmount > 0 && (
+                          <div className="text-sm font-semibold text-green-600 flex items-center justify-end gap-1">
+                            🫙 Desconto de potes ({jarCreditsUsed}x): - R$ {jarDiscountAmount.toFixed(2)}
+                          </div>
+                        )}
+                        <div className="text-2xl font-bold text-gray-900 pt-2 border-t-2 border-gray-300">
                           Total: R$ {total.toFixed(2)}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-600 mt-2">
                           Custo: R$ {totalCost.toFixed(2)}
                         </div>
                         <div className={`text-lg font-semibold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -1016,6 +1094,44 @@ export default function SalesPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Desconto de Potes */}
+            {saleItems.length > 0 && jarCreditsUsed > 0 && (
+              <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">🫙</span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-green-800">
+                      Créditos de Potes Utilizados
+                    </h3>
+                    <p className="text-xs text-green-700">
+                      Sistema 1:1 - Um pote por vela
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Potes utilizados:</span>
+                    <span className="font-medium text-green-700">{jarCreditsUsed} {jarCreditsUsed === 1 ? 'pote' : 'potes'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Desconto por pote:</span>
+                    <span className="font-medium text-green-700">R$ {(settingsStorage.get().jarDiscount || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-green-200">
+                    <span className="text-green-900 font-semibold">Desconto total de potes:</span>
+                    <span className="font-bold text-green-600 text-lg">- R$ {jarDiscountAmount.toFixed(2)}</span>
+                  </div>
+                  <p className="text-xs text-green-700 mt-2 pt-2 border-t border-green-200">
+                    ℹ️ Créditos restantes após esta venda: {(() => {
+                      const customer = customers.find(c => c.id === selectedCustomer);
+                      const currentCredits = customer?.jarCredits || 0;
+                      return Math.max(0, currentCredits - jarCreditsUsed);
+                    })()} {Math.max(0, (customers.find(c => c.id === selectedCustomer)?.jarCredits || 0) - jarCreditsUsed) === 1 ? 'pote' : 'potes'}
+                  </p>
+                </div>
               </div>
             )}
 

@@ -18,6 +18,7 @@ export default function CustomersPage() {
     city: '',
     state: '',
     birthDate: '',
+    jarCredits: '0',
   });
 
   useEffect(() => {
@@ -38,8 +39,14 @@ export default function CustomersPage() {
     e.preventDefault();
     
     const customerData = {
-      ...formData,
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
       birthDate: formData.birthDate ? new Date(formData.birthDate) : undefined,
+      jarCredits: parseInt(formData.jarCredits) || 0,
     };
     
     if (editingCustomer) {
@@ -74,6 +81,7 @@ export default function CustomersPage() {
       city: customer.city || '',
       state: customer.state || '',
       birthDate: birthDateStr,
+      jarCredits: (customer.jarCredits || 0).toString(),
     });
     setShowModal(true);
   };
@@ -122,6 +130,7 @@ export default function CustomersPage() {
       city: '',
       state: '',
       birthDate: '',
+      jarCredits: '0',
     });
     setEditingCustomer(null);
   };
@@ -199,6 +208,12 @@ export default function CustomersPage() {
                   <div className="flex items-center text-sm text-gray-600">
                     <span className="mr-2">🎂</span>
                     {new Date(customer.birthDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+                  </div>
+                )}
+                {(customer.jarCredits || 0) > 0 && (
+                  <div className="flex items-center text-sm font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">
+                    <span className="mr-2">🫙</span>
+                    {customer.jarCredits || 0} {(customer.jarCredits || 0) === 1 ? 'pote' : 'potes'} devolvido{(customer.jarCredits || 0) === 1 ? '' : 's'}
                   </div>
                 )}
                 {customer.city && customer.state && (
@@ -291,6 +306,25 @@ export default function CustomersPage() {
                   />
                   <p className="mt-1 text-xs text-gray-500">
                     Cliente receberá desconto automático em compras no mês de aniversário
+                  </p>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Créditos de Potes Devolvidos 🫙
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.jarCredits}
+                      onChange={(e) => setFormData({ ...formData, jarCredits: e.target.value })}
+                      className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    />
+                    <span className="text-sm text-gray-600">potes devolvidos</span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    A cada compra de vela, 1 crédito será usado automaticamente para desconto (1 pote = 1 vela)
                   </p>
                 </div>
 

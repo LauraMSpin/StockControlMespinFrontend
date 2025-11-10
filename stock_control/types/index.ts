@@ -60,6 +60,7 @@ export interface Customer {
   city?: string;
   state?: string;
   birthDate?: Date; // Data de aniversário do cliente
+  jarCredits: number; // Créditos de potes devolvidos (1 pote = desconto em 1 vela)
   createdAt: Date;
 }
 
@@ -111,6 +112,7 @@ export interface Settings {
   companyEmail?: string;
   companyAddress?: string;
   birthdayDiscount: number; // Desconto de aniversário em percentual (0-100)
+  jarDiscount: number; // Valor do desconto por pote devolvido (em R$)
 }
 
 export interface CategoryPrice {
