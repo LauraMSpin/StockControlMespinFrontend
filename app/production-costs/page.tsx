@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Product, Material, ProductionMaterial } from '@/types';
+import { UpdateProductDto, ProductionMaterialDto } from '@/types/dtos';
 import { productService, materialService } from '@/services';
 
 export default function ProductionCostsPage() {
@@ -207,16 +208,39 @@ export default function ProductionCostsPage() {
     const profitMargin = selectedProduct.price - totalProductionCost;
 
     try {
-      const fullProductData: Product = {
+      // Converter ProductionMaterial para DTO
+      const productionMaterialsDto: ProductionMaterialDto[] = updatedMaterials.map(m => ({
+        materialId: m.materialId,
+        materialName: m.materialName,
+        quantity: m.quantity,
+        unit: m.unit,
+        costPerUnit: m.costPerUnit,
+        totalCost: m.totalCost,
+      }));
+
+      // Criar DTO para envio
+      const productDto: UpdateProductDto = {
+        name: selectedProduct.name,
+        description: selectedProduct.description,
+        price: selectedProduct.price,
+        quantity: selectedProduct.quantity,
+        category: selectedProduct.category,
+        fragrance: selectedProduct.fragrance,
+        weight: selectedProduct.weight,
+        productionCost: totalProductionCost,
+        profitMargin: profitMargin,
+        productionMaterials: productionMaterialsDto,
+      };
+
+      await productService.update(selectedProduct.id, productDto);
+
+      const updatedProduct: Product = {
         ...selectedProduct,
         productionMaterials: updatedMaterials,
         productionCost: totalProductionCost,
         profitMargin: profitMargin,
       };
-
-      await productService.update(selectedProduct.id, fullProductData);
-
-      setSelectedProduct(fullProductData);
+      setSelectedProduct(updatedProduct);
 
       resetAddToProductForm();
       await loadData();
@@ -245,16 +269,39 @@ export default function ProductionCostsPage() {
     const profitMargin = selectedProduct.price - totalProductionCost;
 
     try {
-      const fullProductData: Product = {
+      // Converter ProductionMaterial para DTO
+      const productionMaterialsDto: ProductionMaterialDto[] = updatedMaterials.map(m => ({
+        materialId: m.materialId,
+        materialName: m.materialName,
+        quantity: m.quantity,
+        unit: m.unit,
+        costPerUnit: m.costPerUnit,
+        totalCost: m.totalCost,
+      }));
+
+      // Criar DTO para envio
+      const productDto: UpdateProductDto = {
+        name: selectedProduct.name,
+        description: selectedProduct.description,
+        price: selectedProduct.price,
+        quantity: selectedProduct.quantity,
+        category: selectedProduct.category,
+        fragrance: selectedProduct.fragrance,
+        weight: selectedProduct.weight,
+        productionCost: totalProductionCost,
+        profitMargin: profitMargin,
+        productionMaterials: productionMaterialsDto,
+      };
+
+      await productService.update(selectedProduct.id, productDto);
+
+      const updatedProduct: Product = {
         ...selectedProduct,
         productionMaterials: updatedMaterials,
         productionCost: totalProductionCost,
         profitMargin: profitMargin,
       };
-
-      await productService.update(selectedProduct.id, fullProductData);
-
-      setSelectedProduct(fullProductData);
+      setSelectedProduct(updatedProduct);
       await loadData();
     } catch (error) {
       if (error instanceof Error) {

@@ -1,5 +1,6 @@
 import api from './api';
 import { Product } from '@/types';
+import { UpdateProductDto } from '@/types/dtos';
 
 export const productService = {
   // Listar todos os produtos
@@ -28,8 +29,8 @@ export const productService = {
   },
 
   // Atualizar produto
-  update: async (id: string, product: Product): Promise<void> => {
-    return api.put<void>(`/Products/${id}`, product);
+  update: async (id: string, productDto: UpdateProductDto): Promise<void> => {
+    return api.put<void>(`/Products/${id}`, productDto);
   },
 
   // Deletar produto
