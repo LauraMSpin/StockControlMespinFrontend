@@ -73,18 +73,20 @@ export default function ProductionCostsPage() {
 
     try {
       if (editingMaterial) {
-        await materialService.update(editingMaterial.id, {
+        const fullMaterialData: Material = {
+          ...editingMaterial,
           name: materialForm.name,
           unit: materialForm.unit,
           totalQuantityPurchased: totalQuantity,
           totalCostPaid: totalCost,
           costPerUnit: costPerUnit,
           currentStock: totalQuantity,
-          lowStockAlert: 0,
+          lowStockAlert: editingMaterial.lowStockAlert || 0,
           category: materialForm.category,
           supplier: materialForm.supplier,
           notes: materialForm.notes,
-        });
+        };
+        await materialService.update(editingMaterial.id, fullMaterialData);
       } else {
         await materialService.create({
           name: materialForm.name,
@@ -205,19 +207,16 @@ export default function ProductionCostsPage() {
     const profitMargin = selectedProduct.price - totalProductionCost;
 
     try {
-      await productService.update(selectedProduct.id, {
-        productionMaterials: updatedMaterials,
-        productionCost: totalProductionCost,
-        profitMargin: profitMargin,
-      });
-
-      const updatedProduct = { 
-        ...selectedProduct, 
+      const fullProductData: Product = {
+        ...selectedProduct,
         productionMaterials: updatedMaterials,
         productionCost: totalProductionCost,
         profitMargin: profitMargin,
       };
-      setSelectedProduct(updatedProduct);
+
+      await productService.update(selectedProduct.id, fullProductData);
+
+      setSelectedProduct(fullProductData);
 
       resetAddToProductForm();
       await loadData();
@@ -246,19 +245,16 @@ export default function ProductionCostsPage() {
     const profitMargin = selectedProduct.price - totalProductionCost;
 
     try {
-      await productService.update(selectedProduct.id, {
-        productionMaterials: updatedMaterials,
-        productionCost: totalProductionCost,
-        profitMargin: profitMargin,
-      });
-
-      const updatedProduct = { 
-        ...selectedProduct, 
+      const fullProductData: Product = {
+        ...selectedProduct,
         productionMaterials: updatedMaterials,
         productionCost: totalProductionCost,
         profitMargin: profitMargin,
       };
-      setSelectedProduct(updatedProduct);
+
+      await productService.update(selectedProduct.id, fullProductData);
+
+      setSelectedProduct(fullProductData);
       await loadData();
     } catch (error) {
       if (error instanceof Error) {
@@ -716,9 +712,16 @@ export default function ProductionCostsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-[#2C1810]">
-                {editingProductMaterial ? 'Editar Material' : 'Adicionar Material ao Produto'}
-              </h2>
+              <div>
+                <h2 className="text-2xl font-bold text-[#2C1810]">
+                  {editingProductMaterial ? 'Editar Material' : 'Adicionar Material ao Produto'}
+                </h2>
+                {selectedProduct && (
+                  <p className="text-sm text-[#814923] mt-1">
+                    Produto: <span className="font-semibold">{selectedProduct.name}</span>
+                  </p>
+                )}
+              </div>
               <button 
                 onClick={() => {
                   setShowAddToProductModal(false);
