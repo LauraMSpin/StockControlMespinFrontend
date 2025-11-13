@@ -486,9 +486,23 @@ export default function SalesPage() {
 
     if (sale.status === 'Paid') {
       const confirmDelete = window.confirm(
-        'Esta venda já foi paga. Ao excluí-la, o estoque será devolvido. Deseja continuar?'
+        '⚠️ ATENÇÃO: Esta venda já foi PAGA!\n\n' +
+        'Ao excluir esta venda:\n' +
+        '• O estoque dos produtos será devolvido\n' +
+        '• A receita será removida do balanço financeiro\n' +
+        '• Esta ação NÃO pode ser desfeita\n\n' +
+        'Tem certeza absoluta que deseja excluir esta venda paga?'
       );
       if (!confirmDelete) return;
+      
+      // Segunda confirmação para vendas pagas
+      const doubleConfirm = window.confirm(
+        '⚠️ ÚLTIMA CONFIRMAÇÃO\n\n' +
+        'Você está prestes a excluir uma venda PAGA de R$ ' + sale.totalAmount.toFixed(2) + '\n' +
+        'Cliente: ' + sale.customerName + '\n\n' +
+        'Confirma a exclusão?'
+      );
+      if (!doubleConfirm) return;
     } else {
       const confirmDelete = window.confirm('Deseja realmente excluir esta venda?');
       if (!confirmDelete) return;
