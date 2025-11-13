@@ -35,7 +35,7 @@ export const orderService = {
 
   // Atualizar status da encomenda
   updateStatus: async (id: string, status: string, paymentMethod?: string): Promise<Order> => {
-    return api.patch<Order>(`/Orders/${id}/status`, { status, paymentMethod });
+    return api.put<Order>(`/Orders/${id}/status`, { status, paymentMethod });
   },
 
   // Deletar encomenda
