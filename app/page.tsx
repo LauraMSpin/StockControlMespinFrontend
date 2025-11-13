@@ -46,7 +46,7 @@ export default function Home() {
 
       // Calcular receita apenas das vendas com status "paid"
       const revenue = sales
-        .filter(sale => sale.status === 'paid')
+        .filter(sale => sale.status === 'Paid')
         .reduce((sum, sale) => sum + sale.totalAmount, 0);
 
       setStats({

@@ -361,11 +361,6 @@ export default function SalesPage() {
   };
 
   const handleEditSale = (sale: Sale) => {
-    if (sale.status === 'Paid') {
-      alert('Vendas pagas não podem ser editadas!');
-      return;
-    }
-
     // Preencher o formulário com os dados da venda
     setEditingSale(sale);
     setSelectedCustomer(sale.customerId);
@@ -1282,7 +1277,8 @@ export default function SalesPage() {
               <select
                 value={saleStatus}
                 onChange={(e) => setSaleStatus(e.target.value as Sale['status'])}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                disabled={editingSale?.status === 'Paid'}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="Pending">Pendente</option>
                 <option value="AwaitingPayment">Aguardando Pagamento</option>
@@ -1470,14 +1466,12 @@ export default function SalesPage() {
 
             <div className="flex justify-between gap-4">
               <div className="flex gap-2">
-                {viewingSale.status !== 'Paid' && (
-                  <button
-                    onClick={() => handleEditSale(viewingSale)}
-                    className="px-6 py-2 bg-[#5D663D] text-white rounded-lg hover:bg-[#22452B] transition-colors"
-                  >
-                    Editar
-                  </button>
-                )}
+                <button
+                  onClick={() => handleEditSale(viewingSale)}
+                  className="px-6 py-2 bg-[#5D663D] text-white rounded-lg hover:bg-[#22452B] transition-colors"
+                >
+                  Editar
+                </button>
                 <button
                   onClick={() => handleDeleteSale(viewingSale.id)}
                   className="px-6 py-2 bg-[#AF6138] text-white rounded-lg hover:bg-[#814923] transition-colors"
