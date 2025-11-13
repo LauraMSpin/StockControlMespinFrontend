@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Order, Product, Customer } from '@/types';
 import { orderService, productService, customerService } from '@/services';
+import { OrderDto } from '@/types/dtos';
 import { migrateOrders } from '@/lib/migrations';
 import CustomerSelector from '@/components/CustomerSelector';
 
@@ -77,48 +78,34 @@ export default function OrdersPage() {
     const totalAmount = quantity * unitPrice;
 
     try {
-      if (editingOrder) {
-        // O backend espera o objeto completo com id
-        const fullOrderData: Order = {
-          ...editingOrder,
-          customerId: formData.customerId,
-          customerName: customer.name,
-          productId: formData.productId,
-          productName: product.name,
-          quantity: quantity,
-          unitPrice: unitPrice,
-          totalAmount: totalAmount,
-          orderDate: new Date(formData.orderDate),
-          expectedDeliveryDate: new Date(formData.expectedDeliveryDate),
-          status: formData.status,
-          notes: formData.notes,
-        };
+      const orderDto: OrderDto = {
+        customerId: formData.customerId,
+        customerName: customer.name,
+        productId: formData.productId,
+        productName: product.name,
+        quantity: quantity,
+        unitPrice: unitPrice,
+        totalAmount: totalAmount,
+        orderDate: new Date(formData.orderDate),
+        expectedDeliveryDate: new Date(formData.expectedDeliveryDate),
+        status: formData.status,
+        notes: formData.notes,
+      };
 
+      if (editingOrder) {
         // Se está mudando para delivered e ainda não tem data de entrega, adicionar
-        if (editingOrder.status !== 'delivered' && formData.status === 'delivered' && !editingOrder.deliveredDate) {
-          fullOrderData.deliveredDate = new Date();
+        if (editingOrder.status !== 'Delivered' && formData.status === 'Delivered' && !editingOrder.deliveredDate) {
+          orderDto.deliveredDate = new Date();
         }
         
-        await orderService.update(editingOrder.id, fullOrderData);
+        await orderService.update(editingOrder.id, orderDto);
         
         // Se mudou para delivered, mostrar mensagem
-        if (editingOrder.status !== 'delivered' && formData.status === 'delivered') {
+        if (editingOrder.status !== 'Delivered' && formData.status === 'Delivered') {
           alert('Encomenda entregue! Uma venda foi criada automaticamente no histórico de vendas.');
         }
       } else {
-        await orderService.create({
-          customerId: formData.customerId,
-          customerName: customer.name,
-          productId: formData.productId,
-          productName: product.name,
-          quantity: quantity,
-          unitPrice: unitPrice,
-          totalAmount: totalAmount,
-          orderDate: new Date(formData.orderDate),
-          expectedDeliveryDate: new Date(formData.expectedDeliveryDate),
-          status: formData.status,
-          notes: formData.notes,
-        });
+        await orderService.create(orderDto);
       }
 
       resetForm();
@@ -198,7 +185,7 @@ export default function OrdersPage() {
       quantity: '1',
       orderDate: new Date().toISOString().split('T')[0],
       expectedDeliveryDate: '',
-      status: 'pending',
+      status: 'Pending',
       notes: '',
     });
     setEditingOrder(null);
@@ -206,19 +193,19 @@ export default function OrdersPage() {
 
   const getStatusBadge = (status: Order['status']) => {
     const badges = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      in_production: 'bg-purple-100 text-purple-800',
-      ready_for_delivery: 'bg-indigo-100 text-indigo-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
+      Pending: 'bg-yellow-100 text-yellow-800',
+      InProduction: 'bg-purple-100 text-purple-800',
+      ReadyForDelivery: 'bg-indigo-100 text-indigo-800',
+      Delivered: 'bg-green-100 text-green-800',
+      Cancelled: 'bg-red-100 text-red-800',
     };
 
     const labels = {
-      pending: 'Pendente',
-      in_production: 'Em Produção',
-      ready_for_delivery: 'Pronta para Entrega',
-      delivered: 'Entregue',
-      cancelled: 'Cancelada',
+      Pending: 'Pendente',
+      InProduction: 'Em Produção',
+      ReadyForDelivery: 'Pronta para Entrega',
+      Delivered: 'Entregue',
+      Cancelled: 'Cancelada',
     };
 
     return (
@@ -346,7 +333,7 @@ export default function OrdersPage() {
                 </svg>
               </div>
             </div>
-            <p className="text-2xl font-bold text-yellow-600">{filterOrdersByStatus('pending').length}</p>
+            <p className="text-2xl font-bold text-yellow-600">{filterOrdersByStatus('Pending').length}</p>
           </div>
         </div>
 
@@ -361,7 +348,7 @@ export default function OrdersPage() {
                 </svg>
               </div>
             </div>
-            <p className="text-2xl font-bold text-purple-600">{filterOrdersByStatus('in_production').length}</p>
+            <p className="text-2xl font-bold text-purple-600">{filterOrdersByStatus('InProduction').length}</p>
           </div>
         </div>
 
@@ -375,7 +362,7 @@ export default function OrdersPage() {
                 </svg>
               </div>
             </div>
-            <p className="text-2xl font-bold text-indigo-600">{filterOrdersByStatus('ready_for_delivery').length}</p>
+            <p className="text-2xl font-bold text-indigo-600">{filterOrdersByStatus('ReadyForDelivery').length}</p>
           </div>
         </div>
 
@@ -389,7 +376,7 @@ export default function OrdersPage() {
                 </svg>
               </div>
             </div>
-            <p className="text-2xl font-bold text-green-600">{filterOrdersByStatus('delivered').length}</p>
+            <p className="text-2xl font-bold text-green-600">{filterOrdersByStatus('Delivered').length}</p>
           </div>
         </div>
 
@@ -403,7 +390,7 @@ export default function OrdersPage() {
                 </svg>
               </div>
             </div>
-            <p className="text-2xl font-bold text-red-600">{filterOrdersByStatus('cancelled').length}</p>
+            <p className="text-2xl font-bold text-red-600">{filterOrdersByStatus('Cancelled').length}</p>
           </div>
         </div>
       </div>
@@ -502,9 +489,9 @@ export default function OrdersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex justify-end gap-1 flex-wrap">
                       {/* Botões de mudança de status */}
-                      {order.status === 'pending' && (
+                      {order.status === 'Pending' && (
                         <button
-                          onClick={() => handleStatusChange(order.id, 'in_production')}
+                          onClick={() => handleStatusChange(order.id, 'InProduction')}
                           className="px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors font-medium"
                           title="Iniciar produção"
                         >
@@ -512,9 +499,9 @@ export default function OrdersPage() {
                         </button>
                       )}
                       
-                      {order.status === 'in_production' && (
+                      {order.status === 'InProduction' && (
                         <button
-                          onClick={() => handleStatusChange(order.id, 'ready_for_delivery')}
+                          onClick={() => handleStatusChange(order.id, 'ReadyForDelivery')}
                           className="px-2 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition-colors font-medium"
                           title="Marcar como pronta"
                         >
@@ -522,7 +509,7 @@ export default function OrdersPage() {
                         </button>
                       )}
                       
-                      {order.status === 'ready_for_delivery' && (
+                      {order.status === 'ReadyForDelivery' && (
                         <button
                           onClick={() => handleQuickComplete(order)}
                           className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors font-medium"
@@ -533,7 +520,7 @@ export default function OrdersPage() {
                       )}
                       
                       {/* Botões de editar/excluir apenas se não estiver entregue */}
-                      {order.status !== 'delivered' && (
+                      {order.status !== 'Delivered' && (
                         <>
                           <button
                             onClick={() => handleEdit(order)}
@@ -634,13 +621,13 @@ export default function OrdersPage() {
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as Order['status'] })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                   >
-                    <option value="pending">Pendente</option>
-                    <option value="in_production">Em Produção</option>
-                    <option value="ready_for_delivery">Pronta para Entrega</option>
-                    <option value="delivered">Entregue</option>
-                    <option value="cancelled">Cancelada</option>
+                    <option value="Pending">Pendente</option>
+                    <option value="InProduction">Em Produção</option>
+                    <option value="ReadyForDelivery">Pronta para Entrega</option>
+                    <option value="Delivered">Entregue</option>
+                    <option value="Cancelled">Cancelada</option>
                   </select>
-                  {formData.status === 'delivered' && (
+                  {formData.status === 'Delivered' && (
                     <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

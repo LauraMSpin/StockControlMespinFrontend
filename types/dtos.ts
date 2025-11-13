@@ -63,3 +63,19 @@ export interface UpdateSaleDto {
   paymentMethod?: string;
   notes?: string;
 }
+
+export interface OrderDto {
+  customerId: string;
+  customerName: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  orderDate: Date;
+  expectedDeliveryDate: Date;
+  deliveredDate?: Date;
+  status: string;
+  paymentMethod?: string;
+  notes?: string;
+}

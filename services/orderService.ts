@@ -1,5 +1,6 @@
 import api from './api';
 import { Order } from '@/types';
+import { OrderDto } from '@/types/dtos';
 
 export const orderService = {
   // Listar todas as encomendas
@@ -23,13 +24,13 @@ export const orderService = {
   },
 
   // Criar encomenda
-  create: async (order: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>): Promise<Order> => {
-    return api.post<Order>('/Orders', order);
+  create: async (orderDto: OrderDto): Promise<Order> => {
+    return api.post<Order>('/Orders', orderDto);
   },
 
   // Atualizar encomenda
-  update: async (id: string, order: Order): Promise<void> => {
-    return api.put<void>(`/Orders/${id}`, order);
+  update: async (id: string, orderDto: OrderDto): Promise<void> => {
+    return api.put<void>(`/Orders/${id}`, orderDto);
   },
 
   // Atualizar status da encomenda
