@@ -85,10 +85,10 @@ export default function ReportsPage() {
 
   // Estatísticas Gerais
   const totalSales = filteredSales.length;
-  const paidSales = filteredSales.filter(s => s.status === 'paid');
-  const pendingSales = filteredSales.filter(s => s.status === 'pending');
-  const awaitingPaymentSales = filteredSales.filter(s => s.status === 'awaiting_payment');
-  const cancelledSales = filteredSales.filter(s => s.status === 'cancelled');
+  const paidSales = filteredSales.filter(s => s.status === 'Paid');
+  const pendingSales = filteredSales.filter(s => s.status === 'Pending');
+  const awaitingPaymentSales = filteredSales.filter(s => s.status === 'AwaitingPayment');
+  const cancelledSales = filteredSales.filter(s => s.status === 'Cancelled');
 
   const totalRevenue = paidSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
   const potentialRevenue = [...pendingSales, ...awaitingPaymentSales].reduce((sum, sale) => sum + sale.totalAmount, 0);
@@ -109,7 +109,7 @@ export default function ReportsPage() {
 
   // Top 5 Clientes
   const customerStats = filteredSales
-    .filter(s => s.status === 'paid')
+    .filter(s => s.status === 'Paid')
     .reduce((acc, sale) => {
       if (!acc[sale.customerId]) {
         acc[sale.customerId] = {
@@ -129,7 +129,7 @@ export default function ReportsPage() {
 
   // Top 5 Produtos Mais Vendidos
   const productStats = filteredSales
-    .filter(s => s.status === 'paid')
+    .filter(s => s.status === 'Paid')
     .reduce((acc, sale) => {
       sale.items.forEach((item: SaleItem) => {
         if (!acc[item.productId]) {
@@ -157,10 +157,10 @@ export default function ReportsPage() {
 
   const getPaymentMethodLabel = (method: string) => {
     const labels: Record<string, string> = {
-      cash: '💵 Dinheiro',
-      pix: '📱 PIX',
-      debit: '💳 Débito',
-      credit: '💳 Crédito',
+      Cash: '💵 Dinheiro',
+      Pix: '📱 PIX',
+      Debit: '💳 Débito',
+      Credit: '💳 Crédito',
     };
     return labels[method] || method;
   };

@@ -124,7 +124,7 @@ export default function CustomersPage() {
     try {
       // Verificar se o cliente tem vendas ativas (não canceladas)
       const sales = await saleService.getByCustomer(id);
-      const activeSales = sales.filter(sale => sale.status !== 'cancelled');
+      const activeSales = sales.filter(sale => sale.status !== 'Cancelled');
 
       if (activeSales.length > 0) {
         alert(`Este cliente não pode ser excluído porque possui ${activeSales.length} venda(s) ativa(s). Cancele as vendas antes de excluir o cliente.`);

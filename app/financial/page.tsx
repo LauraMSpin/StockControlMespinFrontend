@@ -267,7 +267,7 @@ export default function FinancialPage() {
     // Receita do mês (vendas pagas)
     const monthlyRevenue = sales.filter(sale => {
       const saleDate = new Date(sale.saleDate);
-      return sale.status === 'paid' && 
+      return sale.status === 'Paid' && 
              saleDate.getMonth() + 1 === month && 
              saleDate.getFullYear() === year;
     }).reduce((sum, sale) => sum + sale.totalAmount, 0);
