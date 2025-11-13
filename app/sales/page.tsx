@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Sale, SaleItem, Product, Customer, Settings } from '@/types';
 import { saleService, productService, customerService, settingsService } from '@/services';
+import { CreateOrderDto, SaleItemDto, UpdateSaleDto } from '@/types/dtos';
 import CustomerSelector from '@/components/CustomerSelector';
 
 export default function SalesPage() {
@@ -18,8 +19,8 @@ export default function SalesPage() {
   const [quantity, setQuantity] = useState('1');
   const [notes, setNotes] = useState('');
   const [discountPercentage, setDiscountPercentage] = useState('0');
-  const [saleStatus, setSaleStatus] = useState<'pending' | 'awaiting_payment' | 'paid' | 'cancelled'>('pending');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pix' | 'debit' | 'credit' | ''>('');
+  const [saleStatus, setSaleStatus] = useState<Sale['status']>('Pending');
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Pix' | 'Debit' | 'Credit' | ''>('');
   const [saleDate, setSaleDate] = useState<string>('');
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [editingStatus, setEditingStatus] = useState<{ saleId: string; currentStatus: Sale['status'] } | null>(null);
@@ -237,7 +238,7 @@ export default function SalesPage() {
     }
 
     // Validar método de pagamento se o status for "paid"
-    if (saleStatus === 'paid' && !paymentMethod) {
+    if (saleStatus === 'Paid' && !paymentMethod) {
       alert('Selecione o método de pagamento para vendas pagas!');
       return;
     }
@@ -282,25 +283,34 @@ export default function SalesPage() {
       saleNotes = saleNotes ? saleNotes + jarDetail : jarDetail.trim();
     }
 
-    const newSale: Omit<Sale, 'id'> = {
+    // Converter SaleItem para SaleItemDto
+    const itemsDto: SaleItemDto[] = saleItems.map(item => ({
+      productId: item.productId,
+      productName: item.productName,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+    }));
+
+    // Criar DTO para envio
+    const saleDto: CreateOrderDto = {
       customerId: customer.id,
       customerName: customer.name,
-      items: saleItems,
+      items: itemsDto,
       subtotal: subtotal,
       discountPercentage: totalDiscountPercentage,
       discountAmount: discountAmount,
       totalAmount: total,
       saleDate: saleDateObj,
       status: saleStatus,
-      paymentMethod: saleStatus === 'paid' ? paymentMethod as 'cash' | 'pix' | 'debit' | 'credit' : undefined,
-      notes: saleNotes
+      notes: saleNotes,
     };
 
     try {
-      await saleService.create(newSale);
+      await saleService.create(saleDto);
       
       // Subtrair créditos de potes do cliente (apenas se não for cancelada)
-      if (saleStatus !== 'cancelled' && jarCreditsUsed > 0) {
+      if (saleStatus !== 'Cancelled' && jarCreditsUsed > 0) {
         const currentCredits = customer.jarCredits || 0;
         const newCredits = Math.max(0, currentCredits - jarCreditsUsed);
         await customerService.updateJarCredits(customer.id, newCredits);
@@ -333,7 +343,7 @@ export default function SalesPage() {
     setNotes('');
     setBirthdayDiscountPercentage('0');
     setAdditionalDiscountPercentage('0');
-    setSaleStatus('pending');
+    setSaleStatus('Pending');
     setPaymentMethod('');
     
     // Definir data atual como padrão (usando hora local para evitar problemas de fuso)
@@ -351,7 +361,7 @@ export default function SalesPage() {
   };
 
   const handleEditSale = (sale: Sale) => {
-    if (sale.status === 'paid') {
+    if (sale.status === 'Paid') {
       alert('Vendas pagas não podem ser editadas!');
       return;
     }
@@ -391,7 +401,7 @@ export default function SalesPage() {
     }
 
     // Validar método de pagamento se o status for "paid"
-    if (saleStatus === 'paid' && !paymentMethod) {
+    if (saleStatus === 'Paid' && !paymentMethod) {
       alert('Selecione o método de pagamento para vendas pagas!');
       return;
     }
@@ -435,22 +445,32 @@ export default function SalesPage() {
       saleNotes = saleNotes ? saleNotes + jarDetail : jarDetail.trim();
     }
 
-    const updatedSale: Partial<Sale> = {
+    // Converter SaleItem para SaleItemDto
+    const itemsDto: SaleItemDto[] = saleItems.map(item => ({
+      productId: item.productId,
+      productName: item.productName,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+    }));
+
+    // Criar DTO para envio
+    const saleDto: UpdateSaleDto = {
       customerId: customer.id,
       customerName: customer.name,
-      items: saleItems,
+      items: itemsDto,
       subtotal: subtotal,
       discountPercentage: totalDiscountPercentage,
       discountAmount: discountAmount,
       totalAmount: total,
       saleDate: saleDateObj,
       status: saleStatus,
-      paymentMethod: saleStatus === 'paid' ? paymentMethod as 'cash' | 'pix' | 'debit' | 'credit' : undefined,
-      notes: saleNotes
+      paymentMethod: saleStatus === 'Paid' ? paymentMethod : undefined,
+      notes: saleNotes,
     };
 
     try {
-      await saleService.update(editingSale.id, updatedSale);
+      await saleService.update(editingSale.id, saleDto);
       
       resetForm();
       await loadData();
@@ -469,7 +489,7 @@ export default function SalesPage() {
     const sale = sales.find(s => s.id === saleId);
     if (!sale) return;
 
-    if (sale.status === 'paid') {
+    if (sale.status === 'Paid') {
       const confirmDelete = window.confirm(
         'Esta venda já foi paga. Ao excluí-la, o estoque será devolvido. Deseja continuar?'
       );
@@ -494,8 +514,16 @@ export default function SalesPage() {
   };
 
   const handleUpdateStatus = async (saleId: string, newStatus: Sale['status']) => {
-    // Se está mudando para "paid", pedir método de pagamento
-    if (newStatus === 'paid') {
+    // Verificar se a venda já está paga
+    const sale = sales.find(s => s.id === saleId);
+    if (sale?.status === 'Paid') {
+      alert('Vendas com status "Pago" não podem ter seu status alterado!');
+      setEditingStatus(null);
+      return;
+    }
+
+    // Se está mudando para "Paid", pedir método de pagamento
+    if (newStatus === 'Paid') {
       setPendingStatusChange({ saleId, newStatus });
       setShowPaymentModal(true);
       setEditingStatus(null);
@@ -525,7 +553,7 @@ export default function SalesPage() {
     }
 
     try {
-      await saleService.updateStatus(pendingStatusChange.saleId, pendingStatusChange.newStatus, paymentMethod as 'cash' | 'pix' | 'debit' | 'credit');
+      await saleService.updateStatus(pendingStatusChange.saleId, pendingStatusChange.newStatus, paymentMethod);
       await loadData();
       setShowPaymentModal(false);
       setPendingStatusChange(null);
@@ -542,17 +570,17 @@ export default function SalesPage() {
 
   const getStatusBadge = (status: Sale['status']) => {
     const badges = {
-      pending: 'bg-gray-100 text-gray-800',
-      awaiting_payment: 'bg-yellow-100 text-yellow-800',
-      paid: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
+      Pending: 'bg-gray-100 text-gray-800',
+      AwaitingPayment: 'bg-yellow-100 text-yellow-800',
+      Paid: 'bg-green-100 text-green-800',
+      Cancelled: 'bg-red-100 text-red-800',
     };
 
     const labels = {
-      pending: 'Pendente',
-      awaiting_payment: 'Aguardando Pagamento',
-      paid: 'Pago',
-      cancelled: 'Cancelado',
+      Pending: 'Pendente',
+      AwaitingPayment: 'Aguardando Pagamento',
+      Paid: 'Pago',
+      Cancelled: 'Cancelado',
     };
 
     return (
@@ -571,10 +599,10 @@ export default function SalesPage() {
     if (!printWindow) return;
 
     const statusLabels = {
-      pending: 'Pendente',
-      awaiting_payment: 'Aguardando Pagamento',
-      paid: 'Pago',
-      cancelled: 'Cancelado',
+      Pending: 'Pendente',
+      AwaitingPayment: 'Aguardando Pagamento',
+      Paid: 'Pago',
+      Cancelled: 'Cancelado',
     };
 
     const invoiceHTML = `
@@ -658,11 +686,11 @@ export default function SalesPage() {
           <p><strong>Data:</strong> ${new Date(sale.saleDate).toLocaleString('pt-BR')}</p>
           <p><strong>Cliente:</strong> ${sale.customerName}</p>
           <p><strong>Status:</strong> <span class="status status-${sale.status}">${statusLabels[sale.status]}</span></p>
-          ${sale.paymentMethod && sale.status === 'paid' ? `<p><strong>Pagamento:</strong> ${
-            sale.paymentMethod === 'cash' ? '💵 Dinheiro' :
-            sale.paymentMethod === 'pix' ? '📱 PIX' :
-            sale.paymentMethod === 'debit' ? '💳 Cartão de Débito' :
-            sale.paymentMethod === 'credit' ? '💳 Cartão de Crédito' : ''
+          ${sale.paymentMethod && sale.status === 'Paid' ? `<p><strong>Pagamento:</strong> ${
+            sale.paymentMethod === 'Cash' ? '💵 Dinheiro' :
+            sale.paymentMethod === 'Pix' ? '📱 PIX' :
+            sale.paymentMethod === 'Debit' ? '💳 Cartão de Débito' :
+            sale.paymentMethod === 'Credit' ? '💳 Cartão de Crédito' : ''
           }</p>` : ''}
           ${sale.fromOrder ? '<p style="color: #1d4ed8; font-weight: 600; margin-top: 8px;">📦 Origem: Encomenda (não afeta estoque)</p>' : ''}
         </div>
@@ -775,7 +803,7 @@ export default function SalesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Pendentes</p>
-              <p className="text-2xl font-bold text-gray-600">{filterSalesByStatus('pending').length}</p>
+              <p className="text-2xl font-bold text-gray-600">{filterSalesByStatus('Pending').length}</p>
             </div>
             <div className="p-3 bg-gray-100 rounded-full">
               <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -789,7 +817,7 @@ export default function SalesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Aguardando Pagamento</p>
-              <p className="text-2xl font-bold text-yellow-600">{filterSalesByStatus('awaiting_payment').length}</p>
+              <p className="text-2xl font-bold text-yellow-600">{filterSalesByStatus('AwaitingPayment').length}</p>
             </div>
             <div className="p-3 bg-yellow-100 rounded-full">
               <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -803,7 +831,7 @@ export default function SalesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Pagas</p>
-              <p className="text-2xl font-bold text-green-600">{filterSalesByStatus('paid').length}</p>
+              <p className="text-2xl font-bold text-green-600">{filterSalesByStatus('Paid').length}</p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
               <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -817,7 +845,7 @@ export default function SalesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Canceladas</p>
-              <p className="text-2xl font-bold text-red-600">{filterSalesByStatus('cancelled').length}</p>
+              <p className="text-2xl font-bold text-red-600">{filterSalesByStatus('Cancelled').length}</p>
             </div>
             <div className="p-3 bg-red-100 rounded-full">
               <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -919,14 +947,20 @@ export default function SalesPage() {
                         autoFocus
                         className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
                       >
-                        <option value="pending">Pendente</option>
-                        <option value="awaiting_payment">Aguardando Pagamento</option>
-                        <option value="paid">Pago</option>
-                        <option value="cancelled">Cancelado</option>
+                        <option value="Pending">Pendente</option>
+                        <option value="AwaitingPayment">Aguardando Pagamento</option>
+                        <option value="Paid">Pago</option>
+                        <option value="Cancelled">Cancelado</option>
                       </select>
                     ) : (
                       <button
-                        onClick={() => setEditingStatus({ saleId: sale.id, currentStatus: sale.status })}
+                        onClick={() => {
+                          if (sale.status === 'Paid') {
+                            alert('Vendas com status "Pago" não podem ter seu status alterado!');
+                            return;
+                          }
+                          setEditingStatus({ saleId: sale.id, currentStatus: sale.status });
+                        }}
                         className="hover:opacity-80"
                       >
                         {getStatusBadge(sale.status)}
@@ -936,10 +970,10 @@ export default function SalesPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {sale.paymentMethod ? (
                       <span className="text-sm text-gray-900">
-                        {sale.paymentMethod === 'cash' && '💵 Dinheiro'}
-                        {sale.paymentMethod === 'pix' && '📱 PIX'}
-                        {sale.paymentMethod === 'debit' && '💳 Débito'}
-                        {sale.paymentMethod === 'credit' && '💳 Crédito'}
+                        {sale.paymentMethod === 'Cash' && '💵 Dinheiro'}
+                        {sale.paymentMethod === 'Pix' && '📱 PIX'}
+                        {sale.paymentMethod === 'Debit' && '💳 Débito'}
+                        {sale.paymentMethod === 'Credit' && '💳 Crédito'}
                       </span>
                     ) : (
                       <span className="text-sm text-gray-400">-</span>
@@ -1250,12 +1284,12 @@ export default function SalesPage() {
                 onChange={(e) => setSaleStatus(e.target.value as Sale['status'])}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
-                <option value="pending">Pendente</option>
-                <option value="awaiting_payment">Aguardando Pagamento</option>
-                <option value="paid">Pago</option>
-                <option value="cancelled">Cancelado</option>
+                <option value="Pending">Pendente</option>
+                <option value="AwaitingPayment">Aguardando Pagamento</option>
+                <option value="Paid">Pago</option>
+                <option value="Cancelled">Cancelado</option>
               </select>
-              {saleStatus === 'cancelled' && (
+              {saleStatus === 'Cancelled' && (
                 <p className="mt-2 text-sm text-red-600">
                   ⚠️ Vendas canceladas não descontarão do estoque
                 </p>
@@ -1263,21 +1297,21 @@ export default function SalesPage() {
             </div>
 
             {/* Método de Pagamento */}
-            {saleStatus === 'paid' && (
+            {saleStatus === 'Paid' && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Método de Pagamento *
                 </label>
                 <select
                   value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'pix' | 'debit' | 'credit' | '')}
+                  onChange={(e) => setPaymentMethod(e.target.value as 'Cash' | 'Pix' | 'Debit' | 'Credit' | '')}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
                   <option value="">Selecione o método</option>
-                  <option value="cash">💵 Dinheiro</option>
-                  <option value="pix">📱 PIX</option>
-                  <option value="debit">💳 Débito</option>
-                  <option value="credit">💳 Crédito</option>
+                  <option value="Cash">💵 Dinheiro</option>
+                  <option value="Pix">📱 PIX</option>
+                  <option value="Debit">💳 Débito</option>
+                  <option value="Credit">💳 Crédito</option>
                 </select>
               </div>
             )}
@@ -1332,14 +1366,14 @@ export default function SalesPage() {
                 <span className="text-sm font-medium text-gray-500">Status:</span>
                 <div className="mt-1">{getStatusBadge(viewingSale.status)}</div>
               </div>
-              {viewingSale.paymentMethod && viewingSale.status === 'paid' && (
+              {viewingSale.paymentMethod && viewingSale.status === 'Paid' && (
                 <div>
                   <span className="text-sm font-medium text-gray-500">Método de Pagamento:</span>
                   <p className="text-gray-900 mt-1">
-                    {viewingSale.paymentMethod === 'cash' && '💵 Dinheiro'}
-                    {viewingSale.paymentMethod === 'pix' && '📱 PIX'}
-                    {viewingSale.paymentMethod === 'debit' && '💳 Cartão de Débito'}
-                    {viewingSale.paymentMethod === 'credit' && '💳 Cartão de Crédito'}
+                    {viewingSale.paymentMethod === 'Cash' && '💵 Dinheiro'}
+                    {viewingSale.paymentMethod === 'Pix' && '📱 PIX'}
+                    {viewingSale.paymentMethod === 'Debit' && '💳 Cartão de Débito'}
+                    {viewingSale.paymentMethod === 'Credit' && '💳 Cartão de Crédito'}
                   </p>
                 </div>
               )}
@@ -1436,7 +1470,7 @@ export default function SalesPage() {
 
             <div className="flex justify-between gap-4">
               <div className="flex gap-2">
-                {viewingSale.status !== 'paid' && (
+                {viewingSale.status !== 'Paid' && (
                   <button
                     onClick={() => handleEditSale(viewingSale)}
                     className="px-6 py-2 bg-[#5D663D] text-white rounded-lg hover:bg-[#22452B] transition-colors"
@@ -1482,15 +1516,15 @@ export default function SalesPage() {
               </label>
               <select
                 value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'pix' | 'debit' | 'credit' | '')}
+                onChange={(e) => setPaymentMethod(e.target.value as 'Cash' | 'Pix' | 'Debit' | 'Credit' | '')}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 autoFocus
               >
                 <option value="">Selecione o método</option>
-                <option value="cash">💵 Dinheiro</option>
-                <option value="pix">📱 PIX</option>
-                <option value="debit">💳 Cartão de Débito</option>
-                <option value="credit">💳 Cartão de Crédito</option>
+                <option value="Cash">💵 Dinheiro</option>
+                <option value="Pix">📱 PIX</option>
+                <option value="Debit">💳 Cartão de Débito</option>
+                <option value="Credit">💳 Cartão de Crédito</option>
               </select>
             </div>
 

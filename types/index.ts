@@ -82,8 +82,8 @@ export interface Sale {
   discountAmount: number; // Valor do desconto em reais
   totalAmount: number; // Valor final após desconto
   saleDate: Date;
-  status: 'pending' | 'awaiting_payment' | 'paid' | 'cancelled';
-  paymentMethod?: 'cash' | 'pix' | 'debit' | 'credit';
+  status: 'Pending' | 'AwaitingPayment' | 'Paid' | 'Cancelled';
+  paymentMethod?: 'Cash' | 'Pix' | 'Debit' | 'Credit';
   notes?: string;
   fromOrder?: boolean; // Indica se veio de uma encomenda
 }
@@ -100,8 +100,8 @@ export interface Order {
   orderDate: Date;
   expectedDeliveryDate: Date;
   deliveredDate?: Date; // Data real da entrega
-  status: 'pending' | 'in_production' | 'ready_for_delivery' | 'delivered' | 'cancelled';
-  paymentMethod?: 'cash' | 'pix' | 'debit' | 'credit';
+  status: 'Pending' | 'InProduction' | 'ReadyForDelivery' | 'Delivered' | 'Cancelled';
+  paymentMethod?: 'Cash' | 'Pix' | 'Debit' | 'Credit';
   notes?: string;
   createdAt: Date;
   updatedAt: Date;

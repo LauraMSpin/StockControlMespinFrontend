@@ -1,5 +1,6 @@
 import api from './api';
 import { Sale } from '@/types';
+import { CreateOrderDto, UpdateSaleDto } from '@/types/dtos';
 
 export const saleService = {
   // Listar todas as vendas
@@ -28,17 +29,17 @@ export const saleService = {
   },
 
   // Criar venda
-  create: async (sale: Omit<Sale, 'id' | 'createdAt' | 'updatedAt'>): Promise<Sale> => {
-    return api.post<Sale>('/Sales', sale);
+  create: async (saleDto: CreateOrderDto): Promise<Sale> => {
+    return api.post<Sale>('/Sales', saleDto);
   },
 
   // Atualizar venda
-  update: async (id: string, sale: Partial<Sale>): Promise<void> => {
-    return api.put<void>(`/Sales/${id}`, sale);
+  update: async (id: string, saleDto: UpdateSaleDto): Promise<void> => {
+    return api.put<void>(`/Sales/${id}`, saleDto);
   },
 
   // Atualizar status da venda
-  updateStatus: async (id: string, status: string, paymentMethod?: 'cash' | 'pix' | 'debit' | 'credit'): Promise<Sale> => {
+  updateStatus: async (id: string, status: string, paymentMethod?: 'Cash' | 'Pix' | 'Debit' | 'Credit'): Promise<Sale> => {
     return api.patch<Sale>(`/Sales/${id}/status`, { status, paymentMethod });
   },
 

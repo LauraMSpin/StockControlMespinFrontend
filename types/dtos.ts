@@ -28,3 +28,38 @@ export interface UpdateProductDto {
   productionMaterials?: ProductionMaterialDto[];
   priceHistories?: PriceHistoryDto[];
 }
+
+export interface SaleItemDto {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface CreateOrderDto {
+  customerId: string;
+  customerName: string;
+  items: SaleItemDto[];
+  subtotal: number;
+  discountPercentage: number;
+  discountAmount: number;
+  totalAmount: number;
+  saleDate: Date;
+  status: string;
+  notes?: string;
+}
+
+export interface UpdateSaleDto {
+  customerId: string;
+  customerName: string;
+  items: SaleItemDto[];
+  subtotal: number;
+  discountPercentage: number;
+  discountAmount: number;
+  totalAmount: number;
+  saleDate: Date;
+  status: string;
+  paymentMethod?: string;
+  notes?: string;
+}
