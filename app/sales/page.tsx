@@ -1382,79 +1382,38 @@ export default function SalesPage() {
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Qtd</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Preço</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Total</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Custo</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Lucro</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {viewingSale.items.map(item => {
-                  const product = products.find(p => p.id === item.productId);
-                  const productionCost = product?.productionCost || 0;
-                  const totalCost = productionCost * item.quantity;
-                  const profit = item.totalPrice - totalCost;
-                  const profitPercentage = item.totalPrice > 0 ? (profit / item.totalPrice) * 100 : 0;
-                  
-                  return (
-                    <tr key={item.productId}>
-                      <td className="px-4 py-2 text-sm">{item.productName}</td>
-                      <td className="px-4 py-2 text-sm">{item.quantity}</td>
-                      <td className="px-4 py-2 text-sm">R$ {item.unitPrice.toFixed(2)}</td>
-                      <td className="px-4 py-2 text-sm font-semibold">R$ {item.totalPrice.toFixed(2)}</td>
-                      <td className="px-4 py-2 text-sm text-red-600">R$ {totalCost.toFixed(2)}</td>
-                      <td className="px-4 py-2 text-sm">
-                        <span className={`font-semibold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          R$ {profit.toFixed(2)}
-                        </span>
-                        <span className="text-xs text-gray-500 ml-1">
-                          ({profitPercentage.toFixed(1)}%)
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {viewingSale.items.map(item => (
+                  <tr key={item.productId}>
+                    <td className="px-4 py-2 text-sm">{item.productName}</td>
+                    <td className="px-4 py-2 text-sm">{item.quantity}</td>
+                    <td className="px-4 py-2 text-sm">R$ {item.unitPrice.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-sm font-semibold">R$ {item.totalPrice.toFixed(2)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
 
             <div className="text-right mb-4">
-              {(() => {
-                const totalCost = viewingSale.items.reduce((sum, item) => {
-                  const product = products.find(p => p.id === item.productId);
-                  const productionCost = product?.productionCost || 0;
-                  return sum + (productionCost * item.quantity);
-                }, 0);
-                const totalProfit = viewingSale.totalAmount - totalCost;
-                const profitMargin = viewingSale.totalAmount > 0 ? (totalProfit / viewingSale.totalAmount) * 100 : 0;
-
-                return (
-                  <>
-                    {viewingSale.discountPercentage > 0 ? (
-                      <div className="space-y-1">
-                        <div className="text-sm text-gray-600">
-                          Subtotal: R$ {viewingSale.subtotal.toFixed(2)}
-                        </div>
-                        <div className="text-sm text-red-600">
-                          Desconto ({viewingSale.discountPercentage}%): - R$ {viewingSale.discountAmount.toFixed(2)}
-                        </div>
-                        <div className="text-xl font-bold text-gray-900 pt-2 border-t border-gray-200">
-                          Total: R$ {viewingSale.totalAmount.toFixed(2)}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-xl font-bold text-gray-900">
-                        Total: R$ {viewingSale.totalAmount.toFixed(2)}
-                      </span>
-                    )}
-                    <div className="mt-3 pt-3 border-t-2 border-[#22452B]">
-                      <div className="text-sm text-gray-600 mb-1">
-                        Custo Total: R$ {totalCost.toFixed(2)}
-                      </div>
-                      <div className={`text-lg font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        Lucro: R$ {totalProfit.toFixed(2)} ({profitMargin.toFixed(1)}%)
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
+              {viewingSale.discountPercentage > 0 ? (
+                <div className="space-y-1">
+                  <div className="text-sm text-gray-600">
+                    Subtotal: R$ {viewingSale.subtotal.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-red-600">
+                    Desconto ({viewingSale.discountPercentage}%): - R$ {viewingSale.discountAmount.toFixed(2)}
+                  </div>
+                  <div className="text-xl font-bold text-gray-900 pt-2 border-t border-gray-200">
+                    Total: R$ {viewingSale.totalAmount.toFixed(2)}
+                  </div>
+                </div>
+              ) : (
+                <span className="text-xl font-bold text-gray-900">
+                  Total: R$ {viewingSale.totalAmount.toFixed(2)}
+                </span>
+              )}
             </div>
 
             {viewingSale.notes && (
