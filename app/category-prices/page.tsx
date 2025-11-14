@@ -13,6 +13,7 @@ export default function CategoryPricesPage() {
   const [formData, setFormData] = useState({
     categoryName: '',
     price: '',
+    isProductCategory: true, // true para produtos, false para materiais
   });
 
   useEffect(() => {
@@ -36,7 +37,13 @@ export default function CategoryPricesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const price = parseFloat(formData.price);
+    const price = formData.price ? parseFloat(formData.price) : 0;
+    
+    // Para produtos, o preço é obrigatório
+    if (formData.isProductCategory && (!formData.price || price <= 0)) {
+      alert('O preço é obrigatório para categorias de produtos!');
+      return;
+    }
     
     if (price < 0) {
       alert('O preço não pode ser negativo!');
@@ -106,9 +113,14 @@ export default function CategoryPricesPage() {
 
   const handleEdit = (categoryPrice: CategoryPrice) => {
     setEditingPrice(categoryPrice);
+    // Determina se é categoria de produto (tem preço) ou material (pode não ter)
+    const isProduct = categoryPrice.price > 0 || categoryPrice.categoryName.toLowerCase().includes('vela') || 
+                      categoryPrice.categoryName.toLowerCase().includes('difusor') ||
+                      categoryPrice.categoryName.toLowerCase().includes('sabonete');
     setFormData({
       categoryName: categoryPrice.categoryName,
-      price: categoryPrice.price.toString(),
+      price: categoryPrice.price > 0 ? categoryPrice.price.toString() : '',
+      isProductCategory: isProduct,
     });
     setShowModal(true);
   };
@@ -130,6 +142,7 @@ export default function CategoryPricesPage() {
     setFormData({
       categoryName: '',
       price: '',
+      isProductCategory: true,
     });
     setEditingPrice(null);
   };
@@ -202,52 +215,130 @@ export default function CategoryPricesPage() {
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Categoria
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Preço Padrão
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {categoryPrices.map((categoryPrice) => (
-                <tr key={categoryPrice.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">
-                      {categoryPrice.categoryName}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-lg font-bold text-[#22452B]">
-                      R$ {categoryPrice.price.toFixed(2)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(categoryPrice)}
-                      className="text-[#5D663D] hover:text-[#22452B] mr-4"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(categoryPrice.id)}
-                      className="text-[#AF6138] hover:text-[#814923]"
-                    >
-                      Excluir
-                    </button>
-                  </td>
+        <div className="space-y-6">
+          {/* Categorias de Produtos */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="bg-[#22452B] px-6 py-3">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                🛍️ Categorias de Produtos
+              </h3>
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Categoria
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Preço Padrão
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ações
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {categoryPrices.filter(cp => cp.price > 0).length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                      Nenhuma categoria de produto cadastrada
+                    </td>
+                  </tr>
+                ) : (
+                  categoryPrices.filter(cp => cp.price > 0).map((categoryPrice) => (
+                    <tr key={categoryPrice.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {categoryPrice.categoryName}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-lg font-bold text-[#22452B]">
+                          R$ {categoryPrice.price.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleEdit(categoryPrice)}
+                          className="text-[#5D663D] hover:text-[#22452B] mr-4"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleDelete(categoryPrice.id)}
+                          className="text-[#AF6138] hover:text-[#814923]"
+                        >
+                          Excluir
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Categorias de Materiais */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="bg-[#B49959] px-6 py-3">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                🧪 Categorias de Materiais de Produção
+              </h3>
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Categoria
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Preço Padrão
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {categoryPrices.filter(cp => cp.price === 0).length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                      Nenhuma categoria de material cadastrada
+                    </td>
+                  </tr>
+                ) : (
+                  categoryPrices.filter(cp => cp.price === 0).map((categoryPrice) => (
+                    <tr key={categoryPrice.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {categoryPrice.categoryName}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-500 italic">
+                          Sem preço padrão
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleEdit(categoryPrice)}
+                          className="text-[#5D663D] hover:text-[#22452B] mr-4"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleDelete(categoryPrice.id)}
+                          className="text-[#AF6138] hover:text-[#814923]"
+                        >
+                          Excluir
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -271,12 +362,38 @@ export default function CategoryPricesPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de Categoria *
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        checked={formData.isProductCategory}
+                        onChange={() => setFormData({ ...formData, isProductCategory: true })}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">🛍️ Produto (requer preço)</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        checked={!formData.isProductCategory}
+                        onChange={() => setFormData({ ...formData, isProductCategory: false, price: '' })}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">🧪 Material (preço opcional)</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nome da Categoria *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Vela Aromática, Difusor, Sabonete"
+                    placeholder={formData.isProductCategory ? "Ex: Vela Aromática, Difusor, Sabonete" : "Ex: Cera, Essência, Embalagem"}
                     value={formData.categoryName}
                     onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#22452B] focus:border-transparent"
@@ -285,18 +402,23 @@ export default function CategoryPricesPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Preço Padrão (R$) *
+                    Preço Padrão (R$) {formData.isProductCategory ? '*' : '(Opcional)'}
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
-                    required
-                    placeholder="Ex: 32.90"
+                    required={formData.isProductCategory}
+                    placeholder={formData.isProductCategory ? "Ex: 32.90" : "Ex: 0 ou deixe vazio"}
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#22452B] focus:border-transparent"
                   />
+                  {!formData.isProductCategory && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Materiais podem não ter preço padrão, pois o preço pode variar
+                    </p>
+                  )}
                 </div>
               </div>
 
