@@ -88,14 +88,22 @@ export interface Sale {
   fromOrder?: boolean; // Indica se veio de uma encomenda
 }
 
-export interface Order {
-  id: string;
-  customerId: string;
-  customerName: string;
+export interface OrderItem {
   productId: string;
   productName: string;
   quantity: number;
   unitPrice: number;
+  totalPrice: number;
+}
+
+export interface Order {
+  id: string;
+  customerId: string;
+  customerName: string;
+  items: OrderItem[];
+  subtotal: number;
+  discountPercentage: number;
+  discountAmount: number;
   totalAmount: number;
   orderDate: Date;
   expectedDeliveryDate: Date;

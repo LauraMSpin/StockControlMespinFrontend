@@ -64,13 +64,21 @@ export interface UpdateSaleDto {
   notes?: string;
 }
 
-export interface OrderDto {
-  customerId: string;
-  customerName: string;
+export interface OrderItemDto {
   productId: string;
   productName: string;
   quantity: number;
   unitPrice: number;
+  totalPrice: number;
+}
+
+export interface OrderDto {
+  customerId: string;
+  customerName: string;
+  items: OrderItemDto[];
+  subtotal: number;
+  discountPercentage: number;
+  discountAmount: number;
   totalAmount: number;
   orderDate: Date;
   expectedDeliveryDate: Date;

@@ -23,13 +23,17 @@ export default function OrdersPage() {
   const [periodFilter, setPeriodFilter] = useState<'all' | '7days' | '15days' | '30days' | '90days'>('30days');
   const [formData, setFormData] = useState({
     customerId: '',
-    productId: '',
-    quantity: '1',
     orderDate: new Date().toISOString().split('T')[0],
     expectedDeliveryDate: '',
-    status: 'pending' as Order['status'],
+    status: 'Pending' as Order['status'],
     notes: '',
   });
+
+  // Estados para gerenciar itens da encomenda
+  const [orderItems, setOrderItems] = useState<Array<{productId: string; productName: string; quantity: number; unitPrice: number; totalPrice: number}>>([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedQuantity, setSelectedQuantity] = useState('1');
+  const [discountPercentage, setDiscountPercentage] = useState(0);
 
   useEffect(() => {
     // Migrar encomendas antigas
@@ -62,29 +66,81 @@ export default function OrdersPage() {
     }
   };
 
+  const handleAddItem = () => {
+    if (!selectedProductId || !selectedQuantity) {
+      alert('Selecione um produto e quantidade');
+      return;
+    }
+
+    const product = products.find(p => p.id === selectedProductId);
+    if (!product) {
+      alert('Produto não encontrado');
+      return;
+    }
+
+    const quantity = parseInt(selectedQuantity);
+    if (quantity <= 0) {
+      alert('Quantidade deve ser maior que zero');
+      return;
+    }
+
+    const totalPrice = product.price * quantity;
+
+    setOrderItems([...orderItems, {
+      productId: product.id,
+      productName: product.name,
+      quantity: quantity,
+      unitPrice: product.price,
+      totalPrice: totalPrice
+    }]);
+
+    setSelectedProductId('');
+    setSelectedQuantity('1');
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setOrderItems(orderItems.filter((_, i) => i !== index));
+  };
+
+  const calculateSubtotal = () => {
+    return orderItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  };
+
+  const calculateDiscountAmount = () => {
+    return (calculateSubtotal() * discountPercentage) / 100;
+  };
+
+  const calculateTotal = () => {
+    return calculateSubtotal() - calculateDiscountAmount();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const customer = customers.find(c => c.id === formData.customerId);
-    const product = products.find(p => p.id === formData.productId);
     
-    if (!customer || !product) {
-      alert('Selecione um cliente e um produto válidos');
+    if (!customer) {
+      alert('Selecione um cliente válido');
       return;
     }
 
-    const quantity = parseInt(formData.quantity);
-    const unitPrice = product.price;
-    const totalAmount = quantity * unitPrice;
+    if (orderItems.length === 0) {
+      alert('Adicione pelo menos um produto à encomenda');
+      return;
+    }
+
+    const subtotal = calculateSubtotal();
+    const discountAmount = calculateDiscountAmount();
+    const totalAmount = calculateTotal();
 
     try {
       const orderDto: OrderDto = {
         customerId: formData.customerId,
         customerName: customer.name,
-        productId: formData.productId,
-        productName: product.name,
-        quantity: quantity,
-        unitPrice: unitPrice,
+        items: orderItems,
+        subtotal: subtotal,
+        discountPercentage: discountPercentage,
+        discountAmount: discountAmount,
         totalAmount: totalAmount,
         orderDate: new Date(formData.orderDate),
         expectedDeliveryDate: new Date(formData.expectedDeliveryDate),
@@ -122,13 +178,13 @@ export default function OrdersPage() {
     setEditingOrder(order);
     setFormData({
       customerId: order.customerId,
-      productId: order.productId,
-      quantity: order.quantity.toString(),
       orderDate: new Date(order.orderDate).toISOString().split('T')[0],
       expectedDeliveryDate: new Date(order.expectedDeliveryDate).toISOString().split('T')[0],
       status: order.status,
       notes: order.notes || '',
     });
+    setOrderItems(order.items || []);
+    setDiscountPercentage(order.discountPercentage || 0);
     setShowModal(true);
   };
 
@@ -181,13 +237,15 @@ export default function OrdersPage() {
   const resetForm = () => {
     setFormData({
       customerId: '',
-      productId: '',
-      quantity: '1',
       orderDate: new Date().toISOString().split('T')[0],
       expectedDeliveryDate: '',
       status: 'Pending',
       notes: '',
     });
+    setOrderItems([]);
+    setSelectedProductId('');
+    setSelectedQuantity('1');
+    setDiscountPercentage(0);
     setEditingOrder(null);
   };
 
@@ -422,10 +480,7 @@ export default function OrdersPage() {
                   Cliente
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Produto
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Quantidade
+                  Produtos
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Valor Total
@@ -453,16 +508,35 @@ export default function OrdersPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-medium text-gray-900">{order.customerName}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{order.productName}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{order.quantity} un.</span>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">
+                      {order.items && order.items.length > 0 ? (
+                        order.items.length === 1 ? (
+                          <span>{order.items[0].productName} ({order.items[0].quantity} un.)</span>
+                        ) : (
+                          <div>
+                            <span className="font-medium">{order.items.length} produtos</span>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {order.items.map((item, idx) => (
+                                <div key={idx}>{item.productName} ({item.quantity} un.)</div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-semibold text-green-600">
                       R$ {order.totalAmount.toFixed(2)}
                     </span>
+                    {order.discountPercentage > 0 && (
+                      <div className="text-xs text-gray-500">
+                        {order.discountPercentage}% desc.
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm text-gray-900">
@@ -562,54 +636,122 @@ export default function OrdersPage() {
                   label="Cliente"
                   required={true}
                 />
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Produto *
-                  </label>
-                  <select
-                    required
-                    value={formData.productId}
-                    onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                  >
-                    <option value="">Selecione um produto</option>
-                    {products.map(product => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} - R$ {product.price.toFixed(2)}
-                      </option>
-                    ))}
-                  </select>
+              {/* Seção de Adicionar Produtos */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Produtos da Encomenda</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Produto
+                    </label>
+                    <select
+                      value={selectedProductId}
+                      onChange={(e) => setSelectedProductId(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    >
+                      <option value="">Selecione um produto</option>
+                      {products.map(product => (
+                        <option key={product.id} value={product.id}>
+                          {product.name} - R$ {product.price.toFixed(2)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Quantidade
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        value={selectedQuantity}
+                        onChange={(e) => setSelectedQuantity(e.target.value)}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantidade *
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                  />
-                </div>
+                {/* Lista de Itens Adicionados */}
+                {orderItems.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-left text-xs text-gray-500">
+                          <th className="pb-2">Produto</th>
+                          <th className="pb-2 text-center">Qtd</th>
+                          <th className="pb-2 text-right">Preço Un.</th>
+                          <th className="pb-2 text-right">Total</th>
+                          <th className="pb-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orderItems.map((item, index) => (
+                          <tr key={index} className="border-t border-gray-200">
+                            <td className="py-2 text-sm">{item.productName}</td>
+                            <td className="py-2 text-sm text-center">{item.quantity}</td>
+                            <td className="py-2 text-sm text-right">R$ {item.unitPrice.toFixed(2)}</td>
+                            <td className="py-2 text-sm text-right font-semibold">R$ {item.totalPrice.toFixed(2)}</td>
+                            <td className="py-2 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(index)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                ✕
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
 
-                {/* Valor Total Calculado */}
-                {formData.productId && formData.quantity && (
-                  <div className="md:col-span-2 bg-green-50 p-4 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-700">Valor Total da Encomenda:</span>
-                      <span className="text-xl font-bold text-green-600">
-                        R$ {(
-                          (products.find(p => p.id === formData.productId)?.price || 0) * 
-                          parseInt(formData.quantity || '0')
-                        ).toFixed(2)}
-                      </span>
+                    {/* Resumo dos Valores */}
+                    <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Subtotal:</span>
+                        <span className="font-semibold">R$ {calculateSubtotal().toFixed(2)}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center text-sm">
+                        <span>Desconto:</span>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={discountPercentage}
+                            onChange={(e) => setDiscountPercentage(parseFloat(e.target.value) || 0)}
+                            className="w-20 px-2 py-1 border border-gray-300 rounded text-right"
+                          />
+                          <span>%</span>
+                          <span className="font-semibold">- R$ {calculateDiscountAmount().toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-300">
+                        <span>Total:</span>
+                        <span className="text-green-600">R$ {calculateTotal().toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
                 )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 border-t border-gray-200 pt-4">
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -709,7 +851,13 @@ export default function OrdersPage() {
             <p className="text-gray-600 mb-6">
               Encomenda de <strong>{orderToComplete.customerName}</strong>
               <br />
-              Produto: <strong>{orderToComplete.productName}</strong>
+              <br />
+              <strong>Produtos:</strong>
+              <div className="text-sm mt-2 mb-2">
+                {orderToComplete.items && orderToComplete.items.map((item, idx) => (
+                  <div key={idx}>• {item.productName} ({item.quantity} un.)</div>
+                ))}
+              </div>
               <br />
               Valor: <strong className="text-green-600">R$ {orderToComplete.totalAmount.toFixed(2)}</strong>
             </p>
