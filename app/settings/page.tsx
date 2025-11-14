@@ -174,7 +174,7 @@ export default function SettingsPage() {
           {/* Desconto por Pote Devolvido */}
           <div className="mb-6 sm:mb-8">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-              <span className="text-xl sm:text-2xl">🫙</span>
+              <span className="text-xl sm:text-2xl">♻️</span>
               Desconto por Pote Devolvido
             </h2>
             

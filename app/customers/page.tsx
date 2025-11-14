@@ -252,7 +252,7 @@ export default function CustomersPage() {
                 )}
                 {(customer.jarCredits || 0) > 0 && (
                   <div className="flex items-center text-xs sm:text-sm font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">
-                    <span className="mr-2">🫙</span>
+                    <span className="mr-2">♻️</span>
                     {customer.jarCredits || 0} {(customer.jarCredits || 0) === 1 ? 'pote' : 'potes'} devolvido{(customer.jarCredits || 0) === 1 ? '' : 's'}
                   </div>
                 )}
@@ -381,8 +381,8 @@ export default function CustomersPage() {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                    Créditos de Potes Devolvidos 🫙
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                    Créditos de Potes Devolvidos ♻️
                   </label>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
                     <input

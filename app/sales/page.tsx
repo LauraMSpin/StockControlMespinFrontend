@@ -322,7 +322,7 @@ export default function SalesPage() {
       
       let message = 'Venda realizada com sucesso!';
       if (jarCreditsUsed > 0) {
-        message += `\n\n🫙 ${jarCreditsUsed} crédito${jarCreditsUsed > 1 ? 's' : ''} de pote${jarCreditsUsed > 1 ? 's' : ''} utilizado${jarCreditsUsed > 1 ? 's' : ''}!`;
+        message += `\n\n♻️ ${jarCreditsUsed} crédito${jarCreditsUsed > 1 ? 's' : ''} de pote${jarCreditsUsed > 1 ? 's' : ''} utilizado${jarCreditsUsed > 1 ? 's' : ''}!`;
         message += `\nDesconto aplicado: R$ ${jarDiscountAmount.toFixed(2)}`;
       }
       alert(message);
@@ -1164,7 +1164,7 @@ export default function SalesPage() {
                             {jarDiscountAmount > 0 && (
                               <div className="flex justify-between text-sm text-green-600 px-4 -mx-4">
                                 <span className="flex items-center gap-1.5">
-                                  <span>🫙</span>
+                                  <span>♻️</span>
                                   <span>Devolução de potes ({jarCreditsUsed} {jarCreditsUsed === 1 ? 'pote' : 'potes'}):</span>
                                 </span>
                                 <span className="font-semibold whitespace-nowrap">- R$ {jarDiscountAmount.toFixed(2)}</span>
@@ -1243,7 +1243,7 @@ export default function SalesPage() {
                     <span className="text-sm text-gray-600">%</span>
                   </div>
                   <p className="mt-2 text-xs text-gray-500">
-                    {jarCreditsUsed > 0 && `🫙 ${jarCreditsUsed} ${jarCreditsUsed === 1 ? 'pote será usado' : 'potes serão usados'} automaticamente. `}
+                    {jarCreditsUsed > 0 && `♻️ ${jarCreditsUsed} ${jarCreditsUsed === 1 ? 'pote será usado' : 'potes serão usados'} automaticamente. `}
                     {isBirthdayDiscount && 'Este desconto será somado ao desconto de aniversário. '}
                     O resumo completo dos descontos aparecerá abaixo.
                   </p>

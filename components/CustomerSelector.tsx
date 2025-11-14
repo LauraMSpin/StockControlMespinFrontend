@@ -232,7 +232,7 @@ export default function CustomerSelector({
 
                 <div className="sm:col-span-2">
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                    Créditos de Potes Devolvidos 🫙
+                    Créditos de Potes Devolvidos ♻️
                   </label>
                   <input
                     type="number"
