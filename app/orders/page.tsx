@@ -744,7 +744,21 @@ export default function OrdersPage() {
                             max="100"
                             step="0.1"
                             value={discountPercentage}
-                            onChange={(e) => setDiscountPercentage(parseFloat(e.target.value) || 0)}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              if (value < 0) {
+                                setDiscountPercentage(0);
+                              } else if (value > 100) {
+                                setDiscountPercentage(100);
+                              } else {
+                                setDiscountPercentage(value);
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              if (value < 0) setDiscountPercentage(0);
+                              if (value > 100) setDiscountPercentage(100);
+                            }}
                             className="w-14 px-1.5 py-1 text-sm border border-gray-300 rounded text-right"
                           />
                           <span className="text-xs">%</span>

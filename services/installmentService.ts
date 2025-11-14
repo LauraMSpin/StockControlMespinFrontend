@@ -33,8 +33,8 @@ export const installmentService = {
   },
 
   // Marcar parcela como paga/não paga
-  toggleInstallment: async (id: string, installmentIndex: number): Promise<InstallmentPayment> => {
-    return api.patch<InstallmentPayment>(`/Installments/${id}/toggle/${installmentIndex}`, {});
+  toggleInstallment: async (id: string, installmentNumber: number): Promise<InstallmentPayment> => {
+    return api.post<InstallmentPayment>(`/Installments/${id}/toggle-payment/${installmentNumber}`, {});
   },
 
   // Deletar parcelamento

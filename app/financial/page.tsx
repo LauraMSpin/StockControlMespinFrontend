@@ -19,7 +19,7 @@ export default function FinancialPage() {
 
   const [expenseForm, setExpenseForm] = useState({
     description: '',
-    category: 'production' as Expense['category'],
+    category: 'Production' as Expense['category'],
     amount: '',
     date: '',
     isRecurring: false,
@@ -31,7 +31,7 @@ export default function FinancialPage() {
     totalAmount: '',
     installments: '',
     startDate: '',
-    category: 'production' as InstallmentPayment['category'],
+    category: 'Production' as InstallmentPayment['category'],
     notes: '',
   });
 
@@ -64,9 +64,16 @@ export default function FinancialPage() {
 
   const getCategoryLabel = (category: string) => {
     const labels: Record<string, string> = {
+      Production: 'Produção',
+      Investment: 'Investimento',
+      FixedCost: 'Custo Fixo',
+      VariableCost: 'Custo Variável',
+      Equipment: 'Equipamento',
+      Other: 'Outro',
+      // Mantém compatibilidade com valores antigos em lowercase
       production: 'Produção',
       investment: 'Investimento',
-      fixed_cost: 'Custo Fixo (MEI, aluguel, etc)',
+      fixed_cost: 'Custo Fixo',
       variable_cost: 'Custo Variável',
       equipment: 'Equipamento',
       other: 'Outro',
@@ -135,7 +142,7 @@ export default function FinancialPage() {
       startDate: installmentForm.startDate ? new Date(installmentForm.startDate) : new Date(),
       category: installmentForm.category,
       notes: installmentForm.notes,
-      paid: Array(installments).fill(false),
+      paymentStatus: [], // O backend vai criar os registros automaticamente
     };
 
     try {
@@ -158,7 +165,7 @@ export default function FinancialPage() {
   const resetExpenseForm = () => {
     setExpenseForm({
       description: '',
-      category: 'production',
+      category: 'Production',
       amount: '',
       date: '',
       isRecurring: false,
@@ -173,7 +180,7 @@ export default function FinancialPage() {
       totalAmount: '',
       installments: '',
       startDate: '',
-      category: 'production',
+      category: 'Production',
       notes: '',
     });
     setEditingInstallment(null);
@@ -220,37 +227,39 @@ export default function FinancialPage() {
     }
   };
 
-  const toggleInstallmentPaid = async (id: string, index: number) => {
+  const toggleInstallmentPaid = async (id: string, installmentNumber: number) => {
     const installment = installments.find(i => i.id === id);
     if (!installment) return;
 
-    const currentValue = installment.paid[index];
+    const currentStatus = installment.paymentStatus?.find(ps => ps.installmentNumber === installmentNumber);
+    const currentValue = currentStatus?.isPaid || false;
     
     if (!currentValue) {
       // Tentando marcar como pago - verificar se todas anteriores estão pagas
-      for (let i = 0; i < index; i++) {
-        if (!installment.paid[i]) {
-          alert('⚠️ Você deve pagar as parcelas na ordem sequencial.\n\nMarque primeiro a parcela ' + (i + 1) + '.');
+      for (let i = 1; i < installmentNumber; i++) {
+        const prevStatus = installment.paymentStatus?.find(ps => ps.installmentNumber === i);
+        if (!prevStatus?.isPaid) {
+          alert('⚠️ Você deve pagar as parcelas na ordem sequencial.\n\nMarque primeiro a parcela ' + i + '.');
           return;
         }
       }
     } else {
       // Tentando desmarcar - verificar se é a última paga
-      let lastPaidIndex = -1;
-      for (let i = 0; i < installment.paid.length; i++) {
-        if (installment.paid[i]) {
-          lastPaidIndex = i;
+      let lastPaidNumber = 0;
+      installment.paymentStatus?.forEach(ps => {
+        if (ps.isPaid && ps.installmentNumber > lastPaidNumber) {
+          lastPaidNumber = ps.installmentNumber;
         }
-      }
+      });
       
-      if (index !== lastPaidIndex) {
-        alert('⚠️ Você só pode desmarcar a última parcela paga.\n\nDesmarque primeiro a parcela ' + (lastPaidIndex + 1) + '.');
+      if (installmentNumber !== lastPaidNumber) {
+        alert('⚠️ Você só pode desmarcar a última parcela paga.\n\nDesmarque primeiro a parcela ' + lastPaidNumber + '.');
         return;
       }
     }
 
     try {
-      await installmentService.toggleInstallment(id, index);
+      await installmentService.toggleInstallment(id, installmentNumber);
       await loadData();
     } catch (error) {
       if (error instanceof Error) {
@@ -289,7 +298,9 @@ export default function FinancialPage() {
       const monthsSinceStart = (year - startDate.getFullYear()) * 12 + (month - (startDate.getMonth() + 1));
       
       if (monthsSinceStart >= 0 && monthsSinceStart < installment.installments) {
-        if (!installment.paid[monthsSinceStart]) {
+        const installmentNumber = monthsSinceStart + 1;
+        const statusForMonth = installment.paymentStatus?.find(ps => ps.installmentNumber === installmentNumber);
+        if (!statusForMonth?.isPaid) {
           return sum + installment.installmentAmount;
         }
       }
@@ -537,7 +548,7 @@ export default function FinancialPage() {
           ) : (
             <div className="space-y-3 max-h-[500px] overflow-y-auto">
               {installments.map(installment => {
-                const paidCount = installment.paid.filter(p => p).length;
+                const paidCount = installment.paymentStatus?.filter(ps => ps.isPaid).length || 0;
                 return (
                   <div key={installment.id} className="p-4 bg-[#EEF2E8] rounded-lg">
                     <div className="mb-2">
@@ -556,21 +567,39 @@ export default function FinancialPage() {
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-1 mb-2">
-                      {installment.paid.map((paid, index) => {
+                      {Array.from({ length: installment.installments }, (_, index) => {
+                        const installmentNumber = index + 1;
+                        const status = installment.paymentStatus?.find(ps => ps.installmentNumber === installmentNumber);
+                        const paid = status?.isPaid || false;
+                        
                         // Verifica se pode marcar (todas anteriores estão pagas)
-                        const canMark = !paid && (index === 0 || installment.paid.slice(0, index).every(p => p));
+                        let canMark = !paid;
+                        if (installmentNumber > 1) {
+                          for (let i = 1; i < installmentNumber; i++) {
+                            const prevStatus = installment.paymentStatus?.find(ps => ps.installmentNumber === i);
+                            if (!prevStatus?.isPaid) {
+                              canMark = false;
+                              break;
+                            }
+                          }
+                        }
                         
                         // Verifica se pode desmarcar (é a última paga)
-                        const lastPaidIndex = installment.paid.map((p, i) => p ? i : -1).filter(i => i >= 0).pop();
-                        const canUnmark = paid && (lastPaidIndex === index);
+                        let lastPaidNumber = 0;
+                        installment.paymentStatus?.forEach(ps => {
+                          if (ps.isPaid && ps.installmentNumber > lastPaidNumber) {
+                            lastPaidNumber = ps.installmentNumber;
+                          }
+                        });
+                        const canUnmark = paid && (lastPaidNumber === installmentNumber);
                         
                         // Determina se está habilitado
                         const isEnabled = canMark || canUnmark;
                         
                         return (
                           <button
-                            key={index}
-                            onClick={() => toggleInstallmentPaid(installment.id, index)}
+                            key={installmentNumber}
+                            onClick={() => toggleInstallmentPaid(installment.id, installmentNumber)}
                             disabled={!isEnabled}
                             className={`px-2 py-1 text-xs rounded transition-all ${
                               paid 
@@ -591,7 +620,7 @@ export default function FinancialPage() {
                                   : 'Marque as parcelas anteriores primeiro'
                             }
                           >
-                            {index + 1}
+                            {installmentNumber}
                           </button>
                         );
                       })}
@@ -643,12 +672,11 @@ export default function FinancialPage() {
                       onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value as Expense['category'] })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#22452B] focus:border-transparent"
                     >
-                      <option value="production">Produção (materiais, insumos)</option>
-                      <option value="investment">Investimento (aplicações no negócio)</option>
-                      <option value="fixed_cost">Custo Fixo (MEI, aluguel, internet)</option>
-                      <option value="variable_cost">Custo Variável (embalagem, frete)</option>
-                      <option value="equipment">Equipamento (ferramentas, máquinas)</option>
-                      <option value="other">Outro</option>
+                      <option value="Production">Produção (materiais, insumos)</option>
+                      <option value="Investment">Investimento (aplicações no negócio)</option>
+                      <option value="FixedCost">Custo Fixo (MEI, aluguel, internet)</option>
+                      <option value="VariableCost">Custo Variável (luz, água)</option>
+                      <option value="Other">Outro</option>
                     </select>
                   </div>
 
@@ -805,11 +833,10 @@ export default function FinancialPage() {
                       onChange={(e) => setInstallmentForm({ ...installmentForm, category: e.target.value as InstallmentPayment['category'] })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#22452B] focus:border-transparent"
                     >
-                      <option value="production">Produção (materiais)</option>
-                      <option value="investment">Investimento (negócio)</option>
-                      <option value="equipment">Equipamento (máquinas)</option>
-                      <option value="fixed_cost">Custo Fixo (MEI, etc)</option>
-                      <option value="other">Outro</option>
+                      <option value="Production">Produção (materiais)</option>
+                      <option value="Investment">Investimento (negócio)</option>
+                      <option value="Equipment">Equipamento (máquinas)</option>
+                      <option value="Other">Outro</option>
                     </select>
                   </div>
 

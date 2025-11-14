@@ -136,11 +136,21 @@ export interface CategoryPrice {
 export interface Expense {
   id: string;
   description: string;
-  category: 'production' | 'investment' | 'fixed_cost' | 'variable_cost' | 'other';
+  category: 'Production' | 'Investment' | 'FixedCost' | 'VariableCost' | 'Other';
   amount: number;
   date: Date;
   isRecurring: boolean; // Se é despesa recorrente mensal
   notes?: string;
+}
+
+export interface InstallmentPaymentStatus {
+  id: string;
+  installmentPaymentId: string;
+  installmentNumber: number;
+  isPaid: boolean;
+  paidDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface InstallmentPayment {
@@ -151,7 +161,7 @@ export interface InstallmentPayment {
   currentInstallment: number;
   installmentAmount: number;
   startDate: Date;
-  category: 'production' | 'investment' | 'equipment' | 'other';
+  category: 'Production' | 'Investment' | 'Equipment' | 'Other';
   notes?: string;
-  paid: boolean[]; // Array indicando quais parcelas foram pagas
+  paymentStatus: InstallmentPaymentStatus[]; // Status de pagamento de cada parcela
 }
