@@ -232,7 +232,7 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="tel"
-                  value={settings.companyPhone}
+                  value={settings.companyPhone || ''}
                   onChange={(e) => setSettings({ ...settings, companyPhone: e.target.value })}
                   className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                   placeholder="(11) 98765-4321"
@@ -245,7 +245,7 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="email"
-                  value={settings.companyEmail}
+                  value={settings.companyEmail || ''}
                   onChange={(e) => setSettings({ ...settings, companyEmail: e.target.value })}
                   className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                   placeholder="contato@velasaromaticas.com.br"
@@ -257,7 +257,7 @@ export default function SettingsPage() {
                   Endereço
                 </label>
                 <textarea
-                  value={settings.companyAddress}
+                  value={settings.companyAddress || ''}
                   onChange={(e) => setSettings({ ...settings, companyAddress: e.target.value })}
                   rows={2}
                   className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"

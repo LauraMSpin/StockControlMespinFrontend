@@ -260,7 +260,30 @@ export default function FinancialPage() {
 
     try {
       await installmentService.toggleInstallment(id, installmentNumber);
-      await loadData();
+      
+      // Atualiza apenas o estado local sem recarregar tudo
+      setInstallments(prevInstallments => 
+        prevInstallments.map(inst => {
+          if (inst.id === id) {
+            const updatedPaymentStatus = inst.paymentStatus?.map(ps => {
+              if (ps.installmentNumber === installmentNumber) {
+                return {
+                  ...ps,
+                  isPaid: !ps.isPaid,
+                  paidDate: !ps.isPaid ? new Date() : undefined
+                };
+              }
+              return ps;
+            }) || [];
+            
+            return {
+              ...inst,
+              paymentStatus: updatedPaymentStatus
+            };
+          }
+          return inst;
+        })
+      );
     } catch (error) {
       if (error instanceof Error) {
         alert(`Erro ao atualizar parcela: ${error.message}`);
