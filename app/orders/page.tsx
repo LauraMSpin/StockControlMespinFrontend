@@ -621,13 +621,13 @@ export default function OrdersPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
               {editingOrder ? 'Editar Encomenda' : 'Nova Encomenda'}
             </h2>
             <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="mb-4">
                 <CustomerSelector
                   value={formData.customerId}
                   onChange={(customerId) => setFormData({ ...formData, customerId })}
@@ -642,15 +642,15 @@ export default function OrdersPage() {
               <div className="border-t border-gray-200 pt-4 mt-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Produtos da Encomenda</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                  <div className="md:col-span-2">
+                <div className="space-y-3 mb-3">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Produto
                     </label>
                     <select
                       value={selectedProductId}
                       onChange={(e) => setSelectedProductId(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                     >
                       <option value="">Selecione um produto</option>
                       {products.map(product => (
@@ -661,24 +661,26 @@ export default function OrdersPage() {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Quantidade
-                    </label>
-                    <div className="flex gap-2">
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Quantidade
+                      </label>
                       <input
                         type="number"
                         min="1"
                         value={selectedQuantity}
                         onChange={(e) => setSelectedQuantity(e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                       />
+                    </div>
+                    <div className="pt-7">
                       <button
                         type="button"
                         onClick={handleAddItem}
-                        className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+                        className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium"
                       >
-                        +
+                        Adicionar
                       </button>
                     </div>
                   </div>
@@ -686,48 +688,56 @@ export default function OrdersPage() {
 
                 {/* Lista de Itens Adicionados */}
                 {orderItems.length > 0 && (
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="text-left text-xs text-gray-500">
-                          <th className="pb-2">Produto</th>
-                          <th className="pb-2 text-center">Qtd</th>
-                          <th className="pb-2 text-right">Preço Un.</th>
-                          <th className="pb-2 text-right">Total</th>
-                          <th className="pb-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {orderItems.map((item, index) => (
-                          <tr key={index} className="border-t border-gray-200">
-                            <td className="py-2 text-sm">{item.productName}</td>
-                            <td className="py-2 text-sm text-center">{item.quantity}</td>
-                            <td className="py-2 text-sm text-right">R$ {item.unitPrice.toFixed(2)}</td>
-                            <td className="py-2 text-sm text-right font-semibold">R$ {item.totalPrice.toFixed(2)}</td>
-                            <td className="py-2 text-right">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveItem(index)}
-                                className="text-red-600 hover:text-red-800"
-                              >
-                                ✕
-                              </button>
-                            </td>
+                  <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-full">
+                        <thead>
+                          <tr className="text-left text-xs text-gray-500">
+                            <th className="pb-2 pr-2">Produto</th>
+                            <th className="pb-2 text-center px-1 w-16">Qtd</th>
+                            <th className="pb-2 text-right px-1 w-20">Preço</th>
+                            <th className="pb-2 text-right px-1 w-20">Total</th>
+                            <th className="pb-2 w-8"></th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {orderItems.map((item, index) => (
+                            <tr key={index} className="border-t border-gray-200">
+                              <td className="py-2 text-sm pr-2 truncate max-w-[150px]" title={item.productName}>
+                                {item.productName}
+                              </td>
+                              <td className="py-2 text-sm text-center px-1">{item.quantity}</td>
+                              <td className="py-2 text-xs text-right px-1 whitespace-nowrap">
+                                R$ {item.unitPrice.toFixed(2)}
+                              </td>
+                              <td className="py-2 text-sm text-right font-semibold px-1 whitespace-nowrap">
+                                R$ {item.totalPrice.toFixed(2)}
+                              </td>
+                              <td className="py-2 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveItem(index)}
+                                  className="text-red-600 hover:text-red-800 text-lg"
+                                >
+                                  ✕
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
                     {/* Resumo dos Valores */}
-                    <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
-                      <div className="flex justify-between text-sm">
+                    <div className="mt-3 pt-3 border-t border-gray-200 space-y-1.5">
+                      <div className="flex justify-between items-center text-sm">
                         <span>Subtotal:</span>
-                        <span className="font-semibold">R$ {calculateSubtotal().toFixed(2)}</span>
+                        <span className="font-semibold whitespace-nowrap">R$ {calculateSubtotal().toFixed(2)}</span>
                       </div>
                       
-                      <div className="flex justify-between items-center text-sm">
-                        <span>Desconto:</span>
-                        <div className="flex items-center gap-2">
+                      <div className="flex justify-between items-center text-sm gap-2">
+                        <span className="flex-shrink-0">Desconto:</span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
                           <input
                             type="number"
                             min="0"
@@ -735,24 +745,23 @@ export default function OrdersPage() {
                             step="0.1"
                             value={discountPercentage}
                             onChange={(e) => setDiscountPercentage(parseFloat(e.target.value) || 0)}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-right"
+                            className="w-14 px-1.5 py-1 text-sm border border-gray-300 rounded text-right"
                           />
-                          <span>%</span>
-                          <span className="font-semibold">- R$ {calculateDiscountAmount().toFixed(2)}</span>
+                          <span className="text-xs">%</span>
+                          <span className="font-semibold text-xs whitespace-nowrap">- R$ {calculateDiscountAmount().toFixed(2)}</span>
                         </div>
                       </div>
 
-                      <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-300">
+                      <div className="flex justify-between items-center text-base font-bold pt-1.5 border-t border-gray-300">
                         <span>Total:</span>
-                        <span className="text-green-600">R$ {calculateTotal().toFixed(2)}</span>
+                        <span className="text-green-600 whitespace-nowrap">R$ {calculateTotal().toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 border-t border-gray-200 pt-4">
-
+              <div className="space-y-3 border-t border-gray-200 pt-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Status *
@@ -761,7 +770,7 @@ export default function OrdersPage() {
                     required
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as Order['status'] })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                   >
                     <option value="Pending">Pendente</option>
                     <option value="InProduction">Em Produção</option>
@@ -770,68 +779,70 @@ export default function OrdersPage() {
                     <option value="Cancelled">Cancelada</option>
                   </select>
                   {formData.status === 'Delivered' && (
-                    <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <p className="mt-1.5 text-xs text-green-600 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      Esta encomenda será convertida em venda e adicionada ao balanço financeiro
+                      Será convertida em venda automaticamente
                     </p>
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Data do Pedido *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.orderDate}
-                    onChange={(e) => setFormData({ ...formData, orderDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Data do Pedido *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.orderDate}
+                      onChange={(e) => setFormData({ ...formData, orderDate: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Entrega Prevista *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.expectedDeliveryDate}
+                      onChange={(e) => setFormData({ ...formData, expectedDeliveryDate: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Entrega Prevista *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.expectedDeliveryDate}
-                    onChange={(e) => setFormData({ ...formData, expectedDeliveryDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Observações
                   </label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    rows={2}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent resize-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-4 mt-6">
+              <div className="flex justify-end gap-3 mt-4">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+                  className="px-4 py-2 text-sm bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium"
                 >
                   {editingOrder ? 'Atualizar' : 'Adicionar'}
                 </button>
