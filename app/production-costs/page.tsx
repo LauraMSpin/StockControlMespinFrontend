@@ -16,6 +16,8 @@ export default function ProductionCostsPage() {
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [showAddToProductModal, setShowAddToProductModal] = useState(false);
   const [editingProductMaterial, setEditingProductMaterial] = useState<ProductionMaterial | null>(null);
+  const [showReplicateModal, setShowReplicateModal] = useState(false);
+  const [selectedProductsToReplicate, setSelectedProductsToReplicate] = useState<Set<string>>(new Set());
 
   const [materialForm, setMaterialForm] = useState({
     name: '',
@@ -318,6 +320,95 @@ export default function ProductionCostsPage() {
     setEditingProductMaterial(null);
   };
 
+  const handleReplicateCosts = async () => {
+    if (!selectedProduct || selectedProductsToReplicate.size === 0) {
+      alert('Selecione pelo menos um produto para replicar os custos!');
+      return;
+    }
+
+    const materialsToReplicate = selectedProduct.productionMaterials || [];
+    if (materialsToReplicate.length === 0) {
+      alert('O produto selecionado não possui materiais configurados!');
+      return;
+    }
+
+    const count = selectedProductsToReplicate.size;
+    const confirmReplication = confirm(
+      `Deseja replicar os custos de produção de "${selectedProduct.name}" para ${count} produto(s) selecionado(s)?\n\n` +
+      `Materiais que serão copiados:\n${materialsToReplicate.map(m => `- ${m.materialName} (${m.quantity}${m.unit})`).join('\n')}\n\n` +
+      `⚠️ Isso substituirá os custos existentes nos produtos selecionados.`
+    );
+
+    if (!confirmReplication) return;
+
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const productId of selectedProductsToReplicate) {
+        try {
+          const product = products.find(p => p.id === productId);
+          if (!product) continue;
+
+          // Converter ProductionMaterial para DTO
+          const productionMaterialsDto: ProductionMaterialDto[] = materialsToReplicate.map(m => ({
+            materialId: m.materialId,
+            materialName: m.materialName,
+            quantity: m.quantity,
+            unit: m.unit,
+            costPerUnit: m.costPerUnit,
+            totalCost: m.totalCost,
+          }));
+
+          const totalProductionCost = materialsToReplicate.reduce((sum, m) => sum + m.totalCost, 0);
+          const profitMargin = product.price - totalProductionCost;
+
+          const productDto: UpdateProductDto = {
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            quantity: product.quantity,
+            category: product.category,
+            fragrance: product.fragrance,
+            weight: product.weight,
+            productionCost: totalProductionCost,
+            profitMargin: profitMargin,
+            productionMaterials: productionMaterialsDto,
+          };
+
+          await productService.update(productId, productDto);
+          successCount++;
+        } catch (err) {
+          console.error(`Erro ao replicar para produto ${productId}:`, err);
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        alert(`✅ Custos replicados com sucesso para ${successCount} produto(s)!${errorCount > 0 ? `\n\n⚠️ ${errorCount} produto(s) falharam.` : ''}`);
+        await loadData();
+        setShowReplicateModal(false);
+        setSelectedProductsToReplicate(new Set());
+      } else {
+        alert('❌ Erro ao replicar custos. Nenhum produto foi atualizado.');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`Erro ao replicar custos: ${error.message}`);
+      }
+    }
+  };
+
+  const toggleProductSelection = (productId: string) => {
+    const newSelection = new Set(selectedProductsToReplicate);
+    if (newSelection.has(productId)) {
+      newSelection.delete(productId);
+    } else {
+      newSelection.add(productId);
+    }
+    setSelectedProductsToReplicate(newSelection);
+  };
+
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
@@ -460,16 +551,30 @@ export default function ProductionCostsPage() {
               <div className="mt-6">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="font-semibold">Materiais Utilizados:</h3>
-                  <button
-                    onClick={() => {
-                      resetAddToProductForm();
-                      setShowAddToProductModal(true);
-                    }}
-                    className="bg-[#AF6138] text-white px-4 py-2 rounded-lg hover:bg-[#814923] transition-colors text-sm flex items-center gap-2"
-                  >
-                    <span>+</span>
-                    Adicionar Material
-                  </button>
+                  <div className="flex gap-2">
+                    {selectedProduct.productionMaterials && selectedProduct.productionMaterials.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setSelectedProductsToReplicate(new Set());
+                          setShowReplicateModal(true);
+                        }}
+                        className="bg-[#B49959] text-white px-4 py-2 rounded-lg hover:bg-[#814923] transition-colors text-sm flex items-center gap-2"
+                      >
+                        <span>📋</span>
+                        Replicar para Outros
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        resetAddToProductForm();
+                        setShowAddToProductModal(true);
+                      }}
+                      className="bg-[#AF6138] text-white px-4 py-2 rounded-lg hover:bg-[#814923] transition-colors text-sm flex items-center gap-2"
+                    >
+                      <span>+</span>
+                      Adicionar Material
+                    </button>
+                  </div>
                 </div>
                 {selectedProduct.productionMaterials?.length ? (
                   <div className="space-y-2">
@@ -893,6 +998,153 @@ export default function ProductionCostsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Replicar Custos para Outros Produtos */}
+      {showReplicateModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <div>
+                <h2 className="text-2xl font-bold text-[#2C1810]">
+                  📋 Replicar Custos de Produção
+                </h2>
+                <p className="text-sm text-[#814923] mt-1">
+                  De: <span className="font-semibold">{selectedProduct.name}</span>
+                </p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowReplicateModal(false);
+                  setSelectedProductsToReplicate(new Set());
+                }}
+                className="text-[#814923] hover:text-[#AF6138] text-3xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* Materiais que serão replicados */}
+              <div className="mb-6 p-4 bg-[#F5EFE7] rounded-lg">
+                <h3 className="font-semibold text-[#2C1810] mb-3">
+                  Materiais que serão copiados:
+                </h3>
+                <div className="space-y-2">
+                  {selectedProduct.productionMaterials?.map((m) => (
+                    <div key={m.id} className="flex justify-between items-center text-sm">
+                      <span className="text-[#814923]">
+                        • {m.materialName} ({m.quantity}{m.unit})
+                      </span>
+                      <span className="font-semibold text-[#AF6138]">
+                        R$ {m.totalCost.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="pt-2 mt-2 border-t border-[#B49959]">
+                    <div className="flex justify-between items-center font-bold">
+                      <span>Custo Total:</span>
+                      <span className="text-[#22452B]">
+                        R$ {(selectedProduct.productionCost || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seleção de produtos */}
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-semibold text-[#2C1810]">
+                    Selecione os produtos de destino:
+                  </h3>
+                  <span className="text-sm text-[#814923]">
+                    {selectedProductsToReplicate.size} selecionado(s)
+                  </span>
+                </div>
+
+                <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
+                  {products
+                    .filter(p => p.id !== selectedProduct.id)
+                    .map((product) => (
+                      <div
+                        key={product.id}
+                        onClick={() => toggleProductSelection(product.id)}
+                        className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-[#F5EFE7] transition-colors ${
+                          selectedProductsToReplicate.has(product.id) ? 'bg-[#EEF2E8]' : ''
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedProductsToReplicate.has(product.id)}
+                            onChange={() => toggleProductSelection(product.id)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-semibold text-[#2C1810]">{product.name}</p>
+                                <p className="text-xs text-[#814923]">
+                                  Preço: R$ {product.price.toFixed(2)}
+                                </p>
+                              </div>
+                              <div className="text-right text-sm">
+                                {product.productionCost && product.productionCost > 0 ? (
+                                  <div>
+                                    <p className="text-[#AF6138]">
+                                      Custo atual: R$ {product.productionCost.toFixed(2)}
+                                    </p>
+                                    <p className="text-xs text-red-600">
+                                      ⚠️ Será substituído
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <p className="text-gray-500 text-xs">
+                                    Sem custos configurados
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                {selectedProductsToReplicate.size > 0 && (
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      ⚠️ <strong>Atenção:</strong> Os custos de produção dos produtos selecionados 
+                      serão <strong>substituídos</strong> pelos materiais de "{selectedProduct.name}".
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Botões */}
+            <div className="flex gap-3 p-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReplicateModal(false);
+                  setSelectedProductsToReplicate(new Set());
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleReplicateCosts}
+                disabled={selectedProductsToReplicate.size === 0}
+                className="flex-1 px-4 py-2 bg-[#B49959] text-white rounded-lg hover:bg-[#814923] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Replicar para {selectedProductsToReplicate.size} Produto(s)
+              </button>
+            </div>
           </div>
         </div>
       )}

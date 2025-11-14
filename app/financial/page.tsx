@@ -40,7 +40,33 @@ export default function FinancialPage() {
     const now = new Date();
     setSelectedMonth(String(now.getMonth() + 1).padStart(2, '0'));
     setSelectedYear(String(now.getFullYear()));
-  }, []);
+
+    // Verificar mudança de data a cada hora e atualizar se necessário
+    const checkDateInterval = setInterval(() => {
+      const currentDate = new Date();
+      const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const currentYear = String(currentDate.getFullYear());
+      
+      // Se mudou o mês, atualizar o mês selecionado e recarregar dados
+      if (selectedMonth === String(new Date().getMonth() + 1).padStart(2, '0') && 
+          selectedYear === String(new Date().getFullYear())) {
+        // Se estamos no mês atual, verificar se mudou
+        const lastCheck = localStorage.getItem('lastFinancialCheck');
+        const lastCheckDate = lastCheck ? new Date(lastCheck) : null;
+        
+        if (!lastCheckDate || 
+            lastCheckDate.getMonth() !== currentDate.getMonth() ||
+            lastCheckDate.getFullYear() !== currentDate.getFullYear()) {
+          setSelectedMonth(currentMonth);
+          setSelectedYear(currentYear);
+          loadData();
+          localStorage.setItem('lastFinancialCheck', currentDate.toISOString());
+        }
+      }
+    }, 3600000); // Verifica a cada hora (3600000 ms)
+
+    return () => clearInterval(checkDateInterval);
+  }, [selectedMonth, selectedYear]);
 
   const loadData = async () => {
     try {
@@ -430,6 +456,13 @@ export default function FinancialPage() {
               <option key={year} value={year}>{year}</option>
             ))}
           </select>
+          <button
+            onClick={loadData}
+            className="ml-auto px-4 py-2 bg-[#22452B] text-white rounded-lg hover:bg-[#1A3521] transition-colors"
+            title="Atualizar dados"
+          >
+            🔄 Atualizar
+          </button>
         </div>
       </div>
 

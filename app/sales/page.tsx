@@ -1054,7 +1054,7 @@ export default function SalesPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   >
                     <option value="">Selecione um produto</option>
-                    {products.filter(p => p.quantity > 0).map(product => (
+                    {products.map(product => (
                       <option key={product.id} value={product.id}>
                         {product.name}
                         {product.weight ? ` (${product.weight})` : ''}
@@ -1102,7 +1102,22 @@ export default function SalesPage() {
                       return (
                         <tr key={item.productId}>
                           <td className="px-4 py-2 text-sm">{item.productName}</td>
-                          <td className="px-4 py-2 text-sm">{item.quantity}</td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const newQuantity = parseInt(e.target.value) || 1;
+                                setSaleItems(saleItems.map(i => 
+                                  i.productId === item.productId 
+                                    ? { ...i, quantity: newQuantity, totalPrice: newQuantity * i.unitPrice }
+                                    : i
+                                ));
+                              }}
+                              className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            />
+                          </td>
                           <td className="px-4 py-2 text-sm">R$ {item.unitPrice.toFixed(2)}</td>
                           <td className="px-4 py-2 text-sm font-semibold">R$ {item.totalPrice.toFixed(2)}</td>
                           <td className="px-4 py-2 text-right">
