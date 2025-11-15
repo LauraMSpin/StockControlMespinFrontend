@@ -14,7 +14,8 @@ import {
   BeakerIcon,
   TagIcon,
   CubeIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Materiais', href: '/materials', icon: CubeIcon },
   { name: 'Preços por Categoria', href: '/category-prices', icon: TagIcon },
   { name: 'Custos de Produção', href: '/production-costs', icon: BeakerIcon },
+  { name: 'Planejamento de Produção', href: '/production-planning', icon: ClipboardDocumentCheckIcon },
   { name: 'Clientes', href: '/customers', icon: UsersIcon },
   { name: 'Vendas', href: '/sales', icon: ShoppingCartIcon },
   { name: 'Encomendas', href: '/orders', icon: ClipboardDocumentListIcon },

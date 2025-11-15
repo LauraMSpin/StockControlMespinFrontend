@@ -167,3 +167,25 @@ export interface InstallmentPayment {
   notes?: string;
   paymentStatus: InstallmentPaymentStatus[]; // Status de pagamento de cada parcela
 }
+
+// Planejamento de Produção
+export interface MaterialNeeded {
+  materialId: string;
+  materialName: string;
+  unit: string;
+  quantityNeeded: number;
+  currentStock: number;
+  deficit: number; // Quanto falta (se negativo)
+  costPerUnit: number;
+  totalCost: number;
+}
+
+export interface ProductionPlan {
+  productId: string;
+  productName: string;
+  currentStock: number;
+  pendingOrders: number; // Total nas encomendas
+  manualQuantity: number; // Quantidade manual definida pelo usuário
+  totalToProduce: number; // Total a produzir
+  materialsNeeded: MaterialNeeded[];
+}
