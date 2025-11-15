@@ -44,9 +44,11 @@ export interface CreateOrderDto {
   subtotal: number;
   discountPercentage: number;
   discountAmount: number;
+  shippingCost: number;
   totalAmount: number;
   saleDate: Date;
   status: string;
+  paymentMethod?: string;
   notes?: string;
 }
 
@@ -57,6 +59,7 @@ export interface UpdateSaleDto {
   subtotal: number;
   discountPercentage: number;
   discountAmount: number;
+  shippingCost: number;
   totalAmount: number;
   saleDate: Date;
   status: string;
@@ -79,6 +82,7 @@ export interface OrderDto {
   subtotal: number;
   discountPercentage: number;
   discountAmount: number;
+  shippingCost: number;
   totalAmount: number;
   orderDate: Date;
   expectedDeliveryDate: Date;

@@ -141,6 +141,7 @@ export default function OrdersPage() {
         subtotal: subtotal,
         discountPercentage: discountPercentage,
         discountAmount: discountAmount,
+        shippingCost: 0,
         totalAmount: totalAmount,
         orderDate: new Date(formData.orderDate),
         expectedDeliveryDate: new Date(formData.expectedDeliveryDate),

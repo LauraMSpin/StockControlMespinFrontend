@@ -32,6 +32,7 @@ export default function SalesPage() {
   const [additionalDiscountPercentage, setAdditionalDiscountPercentage] = useState('0');
   const [jarCreditsUsed, setJarCreditsUsed] = useState(0);
   const [jarDiscountAmount, setJarDiscountAmount] = useState(0);
+  const [shippingCost, setShippingCost] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings>({
@@ -222,7 +223,7 @@ export default function SalesPage() {
   };
 
   const calculateTotal = () => {
-    return calculateSubtotal() - calculateDiscount() - jarDiscountAmount;
+    return calculateSubtotal() - calculateDiscount() - jarDiscountAmount + shippingCost;
   };
 
   const handleSubmitSale = async () => {
@@ -300,9 +301,11 @@ export default function SalesPage() {
       subtotal: subtotal,
       discountPercentage: totalDiscountPercentage,
       discountAmount: discountAmount,
+      shippingCost: shippingCost,
       totalAmount: total,
       saleDate: saleDateObj,
       status: saleStatus,
+      paymentMethod: saleStatus === 'Paid' ? paymentMethod : undefined,
       notes: saleNotes,
     };
 
@@ -343,6 +346,7 @@ export default function SalesPage() {
     setNotes('');
     setBirthdayDiscountPercentage('0');
     setAdditionalDiscountPercentage('0');
+    setShippingCost(0);
     setSaleStatus('Pending');
     setPaymentMethod('');
     
@@ -372,6 +376,7 @@ export default function SalesPage() {
     setAdditionalDiscountPercentage(sale.discountPercentage.toString());
     setIsBirthdayDiscount(false);
     
+    setShippingCost(sale.shippingCost || 0);
     setSaleStatus(sale.status);
     setPaymentMethod(sale.paymentMethod || '');
     
@@ -457,6 +462,7 @@ export default function SalesPage() {
       subtotal: subtotal,
       discountPercentage: totalDiscountPercentage,
       discountAmount: discountAmount,
+      shippingCost: shippingCost,
       totalAmount: total,
       saleDate: saleDateObj,
       status: saleStatus,
@@ -726,9 +732,10 @@ export default function SalesPage() {
         </table>
 
         <div style="text-align: right; margin-top: 20px;">
-          ${sale.discountPercentage > 0 ? `
+          ${sale.discountPercentage > 0 || sale.shippingCost > 0 ? `
             <p style="margin: 5px 0;">Subtotal: R$ ${sale.subtotal.toFixed(2)}</p>
-            <p style="margin: 5px 0; color: #dc2626;">Desconto (${sale.discountPercentage}%): - R$ ${sale.discountAmount.toFixed(2)}</p>
+            ${sale.discountPercentage > 0 ? `<p style="margin: 5px 0; color: #dc2626;">Desconto (${sale.discountPercentage}%): - R$ ${sale.discountAmount.toFixed(2)}</p>` : ''}
+            ${sale.shippingCost > 0 ? `<p style="margin: 5px 0; color: #2563eb;">Frete: + R$ ${sale.shippingCost.toFixed(2)}</p>` : ''}
             <p style="font-size: 1.2em; font-weight: bold; margin: 10px 0; padding-top: 10px; border-top: 2px solid #333;">
               Total: R$ ${sale.totalAmount.toFixed(2)}
             </p>
@@ -1195,6 +1202,16 @@ export default function SalesPage() {
                           </div>
                         )}
                         
+                        {shippingCost > 0 && (
+                          <div className="flex justify-between text-base text-blue-600 border-t pt-2">
+                            <span className="flex items-center gap-1.5">
+                              <span>🚚</span>
+                              <span>Frete:</span>
+                            </span>
+                            <span className="font-semibold">+ R$ {shippingCost.toFixed(2)}</span>
+                          </div>
+                        )}
+                        
                         <div className="flex justify-between text-2xl font-bold text-gray-900 pt-2 border-t-2 border-gray-400">
                           <span>Total a pagar:</span>
                           <span className="text-green-600">R$ {total.toFixed(2)}</span>
@@ -1265,6 +1282,26 @@ export default function SalesPage() {
                 </div>
               </div>
             )}
+
+            {/* Frete */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <span className="text-xl">🚚</span>
+                <span>Custo de Frete (R$)</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={shippingCost}
+                onChange={(e) => setShippingCost(parseFloat(e.target.value) || 0)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="0.00"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                O valor do frete será adicionado ao total da venda
+              </p>
+            </div>
 
             {/* Data da Venda */}
             <div className="mb-6">
@@ -1426,14 +1463,21 @@ export default function SalesPage() {
             </table>
 
             <div className="text-right mb-4">
-              {viewingSale.discountPercentage > 0 ? (
+              {viewingSale.discountPercentage > 0 || viewingSale.shippingCost > 0 ? (
                 <div className="space-y-1">
                   <div className="text-sm text-gray-600">
                     Subtotal: R$ {viewingSale.subtotal.toFixed(2)}
                   </div>
-                  <div className="text-sm text-red-600">
-                    Desconto ({viewingSale.discountPercentage}%): - R$ {viewingSale.discountAmount.toFixed(2)}
-                  </div>
+                  {viewingSale.discountPercentage > 0 && (
+                    <div className="text-sm text-red-600">
+                      Desconto ({viewingSale.discountPercentage}%): - R$ {viewingSale.discountAmount.toFixed(2)}
+                    </div>
+                  )}
+                  {viewingSale.shippingCost > 0 && (
+                    <div className="text-sm text-blue-600">
+                      Frete: + R$ {viewingSale.shippingCost.toFixed(2)}
+                    </div>
+                  )}
                   <div className="text-xl font-bold text-gray-900 pt-2 border-t border-gray-200">
                     Total: R$ {viewingSale.totalAmount.toFixed(2)}
                   </div>

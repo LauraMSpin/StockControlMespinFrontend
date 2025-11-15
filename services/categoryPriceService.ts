@@ -33,8 +33,8 @@ export const categoryPriceService = {
   },
 
   // Aplicar preço de categoria a produtos
-  applyToProducts: async (categoryName: string, price: number): Promise<{ updated: number }> => {
-    return api.post<{ updated: number }>(`/CategoryPrices/apply`, { categoryName, price });
+  applyToProducts: async (id: string): Promise<{ updated: number }> => {
+    return api.post<{ updated: number }>(`/CategoryPrices/${id}/apply-to-products`, {});
   },
 };
 

@@ -80,7 +80,8 @@ export interface Sale {
   subtotal: number; // Valor antes do desconto
   discountPercentage: number; // Desconto em percentual (0-100)
   discountAmount: number; // Valor do desconto em reais
-  totalAmount: number; // Valor final após desconto
+  shippingCost: number; // Custo do frete
+  totalAmount: number; // Valor final após desconto + frete
   saleDate: Date;
   status: 'Pending' | 'AwaitingPayment' | 'Paid' | 'Cancelled';
   paymentMethod?: 'Cash' | 'Pix' | 'Debit' | 'Credit';
@@ -104,6 +105,7 @@ export interface Order {
   subtotal: number;
   discountPercentage: number;
   discountAmount: number;
+  shippingCost: number;
   totalAmount: number;
   orderDate: Date;
   expectedDeliveryDate: Date;

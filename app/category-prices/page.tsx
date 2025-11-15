@@ -91,7 +91,7 @@ export default function CategoryPricesPage() {
         
         // Aplicar preço aos produtos da categoria
         if (affectedProducts.length > 0) {
-          await categoryPriceService.applyToProducts(formData.categoryName, price);
+          await categoryPriceService.applyToProducts(editingPrice.id);
           alert(`✅ Preço atualizado com sucesso!\n\n${affectedProducts.length} produto(s) da categoria "${oldCategoryName}" foram atualizados para R$ ${price.toFixed(2)}.`);
         }
       } else {
