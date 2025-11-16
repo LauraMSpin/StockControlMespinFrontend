@@ -40,7 +40,7 @@ export const productService = {
 
   // Atualizar estoque
   updateStock: async (id: string, quantity: number): Promise<{ id: string; name: string; quantity: number }> => {
-    return api.post<{ id: string; name: string; quantity: number }>(`/Products/${id}/update-stock`, quantity);
+    return api.post<{ id: string; name: string; quantity: number }>(`/Products/${id}/update-stock`, { quantity });
   },
 };
 

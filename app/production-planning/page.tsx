@@ -9,6 +9,7 @@ import materialService from '@/services/materialService';
 interface ProductionPlan {
   productId: string;
   productName: string;
+  productWeight?: string; // Peso da vela
   currentStock: number;
   pendingOrders: number; // Total nas encomendas
   manualQuantity: number; // Quantidade manual definida pelo usuário
@@ -114,6 +115,7 @@ export default function ProductionPlanningPage() {
       return {
         productId: product.id,
         productName: product.name,
+        productWeight: product.weight,
         currentStock: product.quantity,
         pendingOrders: pendingOrders,
         manualQuantity: manualQuantity,
@@ -182,6 +184,169 @@ export default function ProductionPlanningPage() {
     return getTotalMaterialsNeeded().filter(m => m.deficit < 0);
   };
 
+  const printProductionPlan = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const productsNeedingProduction = getProductsNeedingProduction();
+    const totalMaterials = getTotalMaterialsNeeded();
+    const totalCost = getTotalProductionCost();
+    const materialsInDeficit = getMaterialsInDeficit();
+
+    const printHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Planejamento de Produção - ${new Date().toLocaleDateString('pt-BR')}</title>
+        <style>
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+          body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            font-size: 11px;
+          }
+          h1 {
+            text-align: center;
+            color: #333;
+            border-bottom: 2px solid #7c3aed;
+            padding-bottom: 8px;
+            margin: 0 0 15px 0;
+            font-size: 20px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+          }
+          th, td {
+            border: 1px solid #999;
+            padding: 6px 8px;
+            text-align: left;
+          }
+          th {
+            background-color: #7c3aed;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 10px;
+            padding: 8px;
+          }
+          tbody tr {
+            height: auto;
+          }
+          tbody tr:nth-child(odd) {
+            background-color: #f9f9f9;
+          }
+          .text-center { text-align: center; }
+          .font-bold { font-weight: bold; }
+          .text-purple { color: #7c3aed; }
+          .bg-red { background-color: #ffe6e6; }
+          .warning-icon {
+            color: #ef4444;
+            font-weight: bold;
+            margin-right: 3px;
+          }
+          tfoot tr {
+            background-color: #f3f4f6 !important;
+            font-weight: bold;
+          }
+          @media print {
+            body { 
+              margin: 0;
+              padding: 5mm;
+            }
+            h1 {
+              font-size: 18px;
+              margin-bottom: 10px;
+            }
+            table {
+              page-break-inside: auto;
+            }
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            button { display: none !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1 style="margin-bottom: 20px;">📋 Lista de Produção</h1>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 30px;" class="text-center">Nº</th>
+              <th>Produto</th>
+              <th class="text-center" style="width: 60px;">Peso</th>
+              <th class="text-center" style="width: 80px;">Qtd.</th>
+              <th style="width: 180px;">Observações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${productsNeedingProduction.map((plan, index) => {
+              const hasMaterialDeficit = plan.materialsNeeded.some(m => m.deficit < 0);
+              const observations = [];
+              if (plan.pendingOrders > 0) observations.push(`${plan.pendingOrders} encomenda(s)`);
+              if (plan.manualQuantity > 0) observations.push(`${plan.manualQuantity} manual`);
+              if (hasMaterialDeficit) observations.push('⚠️ Verificar materiais');
+              
+              return `
+                <tr ${hasMaterialDeficit ? 'class="bg-red"' : ''}>
+                  <td class="text-center font-bold" style="font-size: 10px;">${index + 1}</td>
+                  <td class="font-bold">
+                    ${plan.productName}
+                  </td>
+                  <td class="text-center">${plan.productWeight || '-'}</td>
+                  <td class="text-center" style="font-size: 16px; font-weight: bold; color: #7c3aed;">
+                    ${plan.totalToProduce}
+                  </td>
+                  <td style="font-size: 10px; color: #555;">
+                    ${observations.join(' • ')}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+          <tfoot>
+            <tr style="background-color: #e5e7eb; font-weight: bold;">
+              <td colspan="3" class="text-right" style="padding: 10px; font-size: 12px;">TOTAL:</td>
+              <td class="text-center" style="font-size: 18px; font-weight: bold; color: #7c3aed; padding: 10px;">
+                ${productionPlans.reduce((sum, p) => sum + p.totalToProduce, 0)}
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <button onclick="window.print()" style="
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background: #7c3aed;
+          color: white;
+          border: none;
+          padding: 15px 30px;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        ">
+          🖨️ Imprimir
+        </button>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printHTML);
+    printWindow.document.close();
+  };
+
   if (loading) {
     return (
       <div className="p-8">
@@ -202,15 +367,26 @@ export default function ProductionPlanningPage() {
             Calcule a produção necessária com base em encomendas, estoque e metas
           </p>
         </div>
-        <button
-          onClick={loadData}
-          className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Atualizar
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={printProductionPlan}
+            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Imprimir
+          </button>
+          <button
+            onClick={loadData}
+            className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Atualizar
+          </button>
+        </div>
       </div>
 
       {/* Resumo Geral */}
@@ -311,6 +487,9 @@ export default function ProductionPlanningPage() {
                   Produto
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Peso
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estoque Atual
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -346,6 +525,17 @@ export default function ProductionPlanningPage() {
                           </svg>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      {plan.productWeight ? (
+                        <span className="text-sm text-gray-900">
+                          {plan.productWeight}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">
+                          não definido
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <span className={`text-sm ${plan.currentStock === 0 ? 'text-red-600 font-semibold' : 'text-gray-900'}`}>
@@ -482,7 +672,12 @@ export default function ProductionPlanningPage() {
           <div className="bg-white rounded-lg p-8 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">{selectedPlan.productName}</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {selectedPlan.productName}
+                  {selectedPlan.productWeight && (
+                    <span className="text-lg font-normal text-gray-600 ml-2">({selectedPlan.productWeight})</span>
+                  )}
+                </h2>
                 <p className="text-gray-600 mt-1">
                   Materiais necessários para produzir {selectedPlan.totalToProduce} unidade(s)
                 </p>

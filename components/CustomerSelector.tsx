@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Customer } from '@/types';
 import { customerService } from '@/services';
 
@@ -8,7 +9,7 @@ interface CustomerSelectorProps {
   value: string;
   onChange: (customerId: string) => void;
   customers: Customer[];
-  onCustomerAdded: () => void;
+  onCustomerAdded: () => void | Promise<void>;
   label?: string;
   required?: boolean;
   showBirthdayIcon?: boolean;
@@ -92,11 +93,14 @@ export default function CustomerSelector({
       
       setShowAddModal(false);
       
-      // Notificar componente pai para recarregar clientes
-      onCustomerAdded();
+      // Notificar componente pai para recarregar clientes e aguardar
+      await onCustomerAdded();
       
-      // Selecionar o novo cliente
-      onChange(newCustomer.id);
+      // Aguardar um momento para garantir que o DOM foi atualizado
+      setTimeout(() => {
+        // Selecionar o novo cliente após a lista ter sido atualizada
+        onChange(newCustomer.id);
+      }, 100);
     } catch (err) {
       console.error('Erro ao criar cliente:', err);
       alert('Não foi possível criar o cliente. Tente novamente.');
@@ -138,7 +142,7 @@ export default function CustomerSelector({
       </div>
 
       {/* Modal Adicionar Cliente */}
-      {showAddModal && (
+      {showAddModal && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-lg p-4 sm:p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
@@ -313,7 +317,8 @@ export default function CustomerSelector({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
