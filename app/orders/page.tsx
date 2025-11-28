@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Order, Product, Customer } from '@/types';
 import { orderService, productService, customerService } from '@/services';
@@ -8,7 +8,7 @@ import { OrderDto } from '@/types/dtos';
 import { migrateOrders } from '@/lib/migrations';
 import CustomerSelector from '@/components/CustomerSelector';
 
-export default function OrdersPage() {
+function OrdersContent() {
   const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -959,5 +959,20 @@ export default function OrdersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#AF6138] mx-auto"></div>
+          <p className="mt-4 text-[#814923]">Carregando...</p>
+        </div>
+      </div>
+    }>
+      <OrdersContent />
+    </Suspense>
   );
 }

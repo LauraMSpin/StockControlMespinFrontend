@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Customer } from '@/types';
 import { customerService, saleService } from '@/services';
 
-export default function CustomersPage() {
+function CustomersContent() {
   const searchParams = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -798,5 +798,20 @@ export default function CustomersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CustomersPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#AF6138] mx-auto"></div>
+          <p className="mt-4 text-[#814923]">Carregando...</p>
+        </div>
+      </div>
+    }>
+      <CustomersContent />
+    </Suspense>
   );
 }

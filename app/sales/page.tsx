@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Sale, SaleItem, Product, Customer, Settings } from '@/types';
 import { saleService, productService, customerService, settingsService } from '@/services';
 import { CreateOrderDto, SaleItemDto, UpdateSaleDto } from '@/types/dtos';
 import CustomerSelector from '@/components/CustomerSelector';
 
-export default function SalesPage() {
+function SalesContent() {
   const searchParams = useSearchParams();
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -1576,5 +1576,20 @@ export default function SalesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SalesPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#AF6138] mx-auto"></div>
+          <p className="mt-4 text-[#814923]">Carregando...</p>
+        </div>
+      </div>
+    }>
+      <SalesContent />
+    </Suspense>
   );
 }
