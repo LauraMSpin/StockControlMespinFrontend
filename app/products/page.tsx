@@ -17,6 +17,7 @@ export default function ProductsPage() {
   const [editingQuantity, setEditingQuantity] = useState<{ productId: string; value: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [groupByWeight, setGroupByWeight] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -236,6 +237,150 @@ export default function ProductsPage() {
     setIsDuplicating(false);
   };
 
+  // Agrupar produtos por peso
+  const groupProductsByWeight = () => {
+    const grouped = new Map<string, Product[]>();
+    
+    products.forEach(product => {
+      const weight = product.weight || 'Sem peso definido';
+      if (!grouped.has(weight)) {
+        grouped.set(weight, []);
+      }
+      grouped.get(weight)!.push(product);
+    });
+
+    // Ordenar os grupos por peso (extrair números)
+    const sortedGroups = Array.from(grouped.entries()).sort((a, b) => {
+      const weightA = a[0];
+      const weightB = b[0];
+      
+      // Produtos sem peso vão para o final
+      if (weightA === 'Sem peso definido') return 1;
+      if (weightB === 'Sem peso definido') return -1;
+      
+      // Extrair números dos pesos
+      const numA = parseFloat(weightA.match(/\d+(\.\d+)?/)?.[0] || '0');
+      const numB = parseFloat(weightB.match(/\d+(\.\d+)?/)?.[0] || '0');
+      
+      return numA - numB;
+    });
+
+    return sortedGroups;
+  };
+
+  const renderProductRow = (product: Product) => (
+    <tr key={product.id} className="hover:bg-gray-50">
+      <td className="px-6 py-4">
+        <div>
+          <div className="text-sm font-medium text-gray-900">{product.name}</div>
+          <div className="text-sm text-gray-500">{product.fragrance}</div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-sm text-gray-900">{product.category || '-'}</span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-sm text-gray-900">{product.weight || '-'}</span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-sm font-semibold text-gray-900">R$ {product.price.toFixed(2)}</span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {editingQuantity?.productId === product.id ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              value={editingQuantity.value}
+              onChange={(e) => handleQuantityChange(e.target.value)}
+              onBlur={handleQuantityBlur}
+              onKeyDown={handleQuantityKeyDown}
+              autoFocus
+              className="w-20 px-2 py-1 text-sm border border-blue-500 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+            <span className="text-sm text-gray-500">un.</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 group">
+            <button
+              onClick={() => adjustQuantity(product.id, -1)}
+              disabled={product.quantity === 0}
+              className="p-1 rounded hover:bg-[#FFEDD5] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Diminuir quantidade"
+            >
+              <svg className="w-4 h-4 text-[#AF6138]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+              </svg>
+            </button>
+            <button
+              onClick={() => handleQuantityClick(product)}
+              className="min-w-[60px] px-3 py-1 text-sm text-[#2C1810] hover:bg-[#FFF9F0] hover:text-[#814923] rounded border border-transparent hover:border-[#B49959] transition-colors"
+              title="Clicar para editar"
+            >
+              {product.quantity} un.
+            </button>
+            <button
+              onClick={() => adjustQuantity(product.id, 1)}
+              className="p-1 rounded hover:bg-[#EEF2E8] transition-colors"
+              title="Aumentar quantidade"
+            >
+              <svg className="w-4 h-4 text-[#22452B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {product.quantity === 0 ? (
+          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#FFEDD5] text-[#AF6138]">
+            Esgotado
+          </span>
+        ) : product.quantity < lowStockThreshold ? (
+          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#FFF9F0] text-[#B49959]">
+            Baixo
+          </span>
+        ) : (
+          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#EEF2E8] text-[#22452B]">
+            Normal
+          </span>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <button
+          onClick={() => handleEdit(product)}
+          className="text-[#5D663D] hover:text-[#22452B] mr-3 inline-flex items-center gap-1"
+          title="Editar produto"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          Editar
+        </button>
+        <button
+          onClick={() => handleDuplicate(product)}
+          className="text-[#B49959] hover:text-[#814923] mr-3 inline-flex items-center gap-1"
+          title="Criar cópia deste produto"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          Duplicar
+        </button>
+        <button
+          onClick={() => handleDelete(product.id)}
+          className="text-[#AF6138] hover:text-[#814923] inline-flex items-center gap-1"
+          title="Excluir produto"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          Excluir
+        </button>
+      </td>
+    </tr>
+  );
+
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
@@ -243,18 +388,34 @@ export default function ProductsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Produtos</h1>
           <p className="text-gray-600 mt-2">Gerencie seu estoque de velas aromáticas</p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-          className="bg-[#AF6138] text-white px-6 py-3 rounded-lg hover:bg-[#814923] transition-colors flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Novo Produto
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setGroupByWeight(!groupByWeight)}
+            className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+              groupByWeight 
+                ? 'bg-[#22452B] text-white' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+            title={groupByWeight ? 'Desagrupar produtos' : 'Agrupar por peso'}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+            {groupByWeight ? 'Agrupado por Peso' : 'Agrupar por Peso'}
+          </button>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowModal(true);
+            }}
+            className="bg-[#AF6138] text-white px-6 py-3 rounded-lg hover:bg-[#814923] transition-colors flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Novo Produto
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -290,7 +451,52 @@ export default function ProductsPage() {
             Adicionar Produto
           </button>
         </div>
+      ) : groupByWeight ? (
+        // Visualização agrupada por peso
+        <div className="space-y-6">
+          {groupProductsByWeight().map(([weight, weightProducts]) => (
+            <div key={weight} className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="bg-[#22452B] text-white px-6 py-3 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                </svg>
+                <h3 className="text-lg font-semibold">{weight}</h3>
+                <span className="ml-auto text-sm opacity-90">
+                  {weightProducts.length} {weightProducts.length === 1 ? 'produto' : 'produtos'}
+                </span>
+              </div>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Produto
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Categoria
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Preço
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Quantidade
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {weightProducts.map(product => renderProductRow(product))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
       ) : (
+        // Visualização normal (lista única)
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -319,118 +525,7 @@ export default function ProductsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {products.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                      <div className="text-sm text-gray-500">{product.fragrance}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{product.category || '-'}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{product.weight || '-'}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-semibold text-gray-900">R$ {product.price.toFixed(2)}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {editingQuantity?.productId === product.id ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          value={editingQuantity.value}
-                          onChange={(e) => handleQuantityChange(e.target.value)}
-                          onBlur={handleQuantityBlur}
-                          onKeyDown={handleQuantityKeyDown}
-                          autoFocus
-                          className="w-20 px-2 py-1 text-sm border border-blue-500 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        />
-                        <span className="text-sm text-gray-500">un.</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 group">
-                        <button
-                          onClick={() => adjustQuantity(product.id, -1)}
-                          disabled={product.quantity === 0}
-                          className="p-1 rounded hover:bg-[#FFEDD5] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                          title="Diminuir quantidade"
-                        >
-                          <svg className="w-4 h-4 text-[#AF6138]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleQuantityClick(product)}
-                          className="min-w-[60px] px-3 py-1 text-sm text-[#2C1810] hover:bg-[#FFF9F0] hover:text-[#814923] rounded border border-transparent hover:border-[#B49959] transition-colors"
-                          title="Clicar para editar"
-                        >
-                          {product.quantity} un.
-                        </button>
-                        <button
-                          onClick={() => adjustQuantity(product.id, 1)}
-                          className="p-1 rounded hover:bg-[#EEF2E8] transition-colors"
-                          title="Aumentar quantidade"
-                        >
-                          <svg className="w-4 h-4 text-[#22452B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {product.quantity === 0 ? (
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#FFEDD5] text-[#AF6138]">
-                        Esgotado
-                      </span>
-                    ) : product.quantity < lowStockThreshold ? (
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#FFF9F0] text-[#B49959]">
-                        Baixo
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#EEF2E8] text-[#22452B]">
-                        Normal
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(product)}
-                      className="text-[#5D663D] hover:text-[#22452B] mr-3 inline-flex items-center gap-1"
-                      title="Editar produto"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDuplicate(product)}
-                      className="text-[#B49959] hover:text-[#814923] mr-3 inline-flex items-center gap-1"
-                      title="Criar cópia deste produto"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      Duplicar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="text-[#AF6138] hover:text-[#814923] inline-flex items-center gap-1"
-                      title="Excluir produto"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Excluir
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {products.map(product => renderProductRow(product))}
             </tbody>
           </table>
         </div>
