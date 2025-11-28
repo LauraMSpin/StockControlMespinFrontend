@@ -141,7 +141,7 @@ export const saleStorage = {
     const sales = saleStorage.getAll();
     
     // Validar estoque antes de criar a venda (exceto se for cancelada OU se vier de encomenda)
-    if (sale.status !== 'cancelled' && !sale.fromOrder) {
+    if (sale.status !== 'Cancelled' && !sale.fromOrder) {
       for (const item of sale.items) {
         const product = productStorage.getById(item.productId);
         if (!product) {
@@ -156,13 +156,13 @@ export const saleStorage = {
     const newSale: Sale = {
       ...sale,
       id: generateId(),
-      status: sale.status || 'pending', // Status padrão
+      status: sale.status || 'Pending', // Status padrão
     };
     sales.push(newSale);
     saleStorage.save(sales);
     
     // Atualizar estoque apenas se a venda não for cancelada E não vier de encomenda
-    if (sale.status !== 'cancelled' && !sale.fromOrder) {
+    if (sale.status !== 'Cancelled' && !sale.fromOrder) {
       sale.items.forEach(item => {
         const product = productStorage.getById(item.productId);
         if (product) {
@@ -186,7 +186,7 @@ export const saleStorage = {
       // Apenas manipular estoque se a venda NÃO vier de encomenda
       if (!oldSale.fromOrder) {
         // Se o status mudou de não-cancelado para cancelado, devolver ao estoque
-        if (oldSale.status !== 'cancelled' && updates.status === 'cancelled') {
+        if (oldSale.status !== 'Cancelled' && updates.status === 'Cancelled') {
           oldSale.items.forEach(item => {
             const product = productStorage.getById(item.productId);
             if (product) {
@@ -198,7 +198,7 @@ export const saleStorage = {
         }
         
         // Se o status mudou de cancelado para outro, validar e remover do estoque
-        if (oldSale.status === 'cancelled' && updates.status && updates.status !== 'cancelled') {
+        if (oldSale.status === 'Cancelled' && updates.status && updates.status !== 'Cancelled') {
           // Validar estoque antes de remover
           for (const item of oldSale.items) {
             const product = productStorage.getById(item.productId);
@@ -238,7 +238,7 @@ export const saleStorage = {
     }
     
     // Se a venda foi paga e não veio de encomenda, devolver itens ao estoque
-    if (saleToDelete.status === 'paid' && !saleToDelete.fromOrder) {
+    if (saleToDelete.status === 'Paid' && !saleToDelete.fromOrder) {
       saleToDelete.items.forEach(item => {
         const product = productStorage.getById(item.productId);
         if (product) {
@@ -291,28 +291,27 @@ export const orderStorage = {
       const oldOrder = orders[index];
       const newOrder = { ...oldOrder, ...updates };
       
-      // Se o status mudou para "delivered", converter em venda (SEM descontar estoque)
-      if (oldOrder.status !== 'delivered' && updates.status === 'delivered') {
-        const totalAmount = newOrder.totalAmount;
-        
-        // Criar venda automaticamente com status "paid" e flag fromOrder
+      // Se o status mudou para "Delivered", converter em venda (SEM descontar estoque)
+      if (oldOrder.status !== 'Delivered' && updates.status === 'Delivered') {
+        // Criar venda automaticamente com status "Paid" e flag fromOrder
         saleStorage.add({
           customerId: newOrder.customerId,
           customerName: newOrder.customerName,
-          items: [{
-            productId: newOrder.productId,
-            productName: newOrder.productName,
-            quantity: newOrder.quantity,
-            unitPrice: newOrder.unitPrice,
-            totalPrice: newOrder.totalAmount
-          }],
-          subtotal: totalAmount,
-          discountPercentage: 0,
-          discountAmount: 0,
-          totalAmount: totalAmount,
+          items: newOrder.items.map(item => ({
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice
+          })),
+          subtotal: newOrder.subtotal,
+          discountPercentage: newOrder.discountPercentage,
+          discountAmount: newOrder.discountAmount,
+          shippingCost: newOrder.shippingCost,
+          totalAmount: newOrder.totalAmount,
           saleDate: new Date(),
-          status: 'paid',
-          paymentMethod: newOrder.paymentMethod, // Usar método de pagamento da encomenda
+          status: 'Paid',
+          paymentMethod: newOrder.paymentMethod,
           fromOrder: true, // Flag para não descontar do estoque
           notes: `Encomenda #${newOrder.id} - ${newOrder.notes || ''}`
         });
@@ -461,47 +460,54 @@ export const installmentStorage = {
     return installments.find(i => i.id === id);
   },
   
-  markInstallmentAsPaid: (id: string, installmentIndex: number) => {
+  markInstallmentAsPaid: (id: string, installmentNumber: number) => {
     const installments = installmentStorage.getAll();
     const installment = installments.find(i => i.id === id);
-    if (installment && installmentIndex < installment.paid.length) {
-      const currentValue = installment.paid[installmentIndex];
+    if (!installment || !installment.paymentStatus) return null;
+    
+    const statusIndex = installment.paymentStatus.findIndex(
+      ps => ps.installmentNumber === installmentNumber
+    );
+    if (statusIndex === -1) return null;
+    
+    const currentStatus = installment.paymentStatus[statusIndex];
+    const currentValue = currentStatus.isPaid;
+    
+    if (currentValue) {
+      // Se está marcado, permitir desmarcar apenas se for a última parcela paga sequencial
+      let lastPaidNumber = 0;
+      installment.paymentStatus.forEach(ps => {
+        if (ps.isPaid && ps.installmentNumber > lastPaidNumber) {
+          lastPaidNumber = ps.installmentNumber;
+        }
+      });
       
-      if (currentValue) {
-        // Se está marcado, permitir desmarcar apenas se for a última parcela paga sequencial
-        // Encontrar a última parcela paga
-        let lastPaidIndex = -1;
-        for (let i = 0; i < installment.paid.length; i++) {
-          if (installment.paid[i]) {
-            lastPaidIndex = i;
-          }
-        }
-        
-        // Só pode desmarcar se for a última paga
-        if (installmentIndex === lastPaidIndex) {
-          installment.paid[installmentIndex] = false;
-          installmentStorage.save(installments);
-          return installment;
-        }
-        // Se não for a última, não faz nada
-        return null;
-      } else {
-        // Se está desmarcado, verificar se pode marcar (deve ser sequencial)
-        // Verificar se todas as anteriores estão pagas
-        for (let i = 0; i < installmentIndex; i++) {
-          if (!installment.paid[i]) {
-            // Tem parcela anterior não paga, não pode marcar
-            return null;
-          }
-        }
-        
-        // Todas anteriores estão pagas, pode marcar
-        installment.paid[installmentIndex] = true;
+      // Só pode desmarcar se for a última paga
+      if (installmentNumber === lastPaidNumber) {
+        installment.paymentStatus[statusIndex].isPaid = false;
+        installment.paymentStatus[statusIndex].paidDate = undefined;
         installmentStorage.save(installments);
         return installment;
       }
+      // Se não for a última, não faz nada
+      return null;
+    } else {
+      // Se está desmarcado, verificar se pode marcar (deve ser sequencial)
+      // Verificar se todas as anteriores estão pagas
+      for (let i = 1; i < installmentNumber; i++) {
+        const prevStatus = installment.paymentStatus.find(ps => ps.installmentNumber === i);
+        if (!prevStatus?.isPaid) {
+          // Tem parcela anterior não paga, não pode marcar
+          return null;
+        }
+      }
+      
+      // Todas anteriores estão pagas, pode marcar
+      installment.paymentStatus[statusIndex].isPaid = true;
+      installment.paymentStatus[statusIndex].paidDate = new Date();
+      installmentStorage.save(installments);
+      return installment;
     }
-    return null;
   }
 };
 
