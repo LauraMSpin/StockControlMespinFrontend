@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { signOut, useSession } from 'next-auth/react';
 import { 
   HomeIcon, 
   ShoppingBagIcon, 
@@ -15,7 +16,8 @@ import {
   TagIcon,
   CubeIcon,
   Cog6ToothIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -35,6 +37,7 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
     <div className="flex flex-col w-64 bg-[#22452B] h-screen fixed overflow-y-auto">
@@ -68,8 +71,30 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div className="px-4 py-4 text-xs text-[#B49959] border-t border-[#5D663D] flex-shrink-0 sticky bottom-0 bg-[#22452B]">
-        Sistema de Controle de Estoque v1.0
+      <div className="px-4 py-4 border-t border-[#5D663D] flex-shrink-0 sticky bottom-0 bg-[#22452B]">
+        {session?.user && (
+          <div className="flex items-center gap-3 mb-3">
+            {session.user.image && (
+              <img
+                src={session.user.image}
+                alt=""
+                className="w-8 h-8 rounded-full"
+                referrerPolicy="no-referrer"
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-[#FAF8F5] truncate">{session.user.name}</p>
+              <p className="text-xs text-[#B49959] truncate">{session.user.email}</p>
+            </div>
+          </div>
+        )}
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex items-center w-full px-3 py-2 text-sm text-[#FAF8F5] rounded-lg hover:bg-[#5D663D] transition-colors cursor-pointer"
+        >
+          <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
+          Sair
+        </button>
       </div>
     </div>
   );
